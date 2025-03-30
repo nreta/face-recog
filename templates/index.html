@@ -283,7 +283,6 @@
       </div>
     </div>
 
-    <audio id="success-sound" src="/photos/login.mp3" preload="auto"></audio>
     <script>
       const startButton = document.getElementById("start-button");
       const endButton = document.getElementById("end-button");
@@ -324,7 +323,6 @@
               statusDiv.innerHTML = `✅ Успешно, хорошего рабочего дня <strong>${data.name}</strong>.`;
               statusDiv.className = "success";
               instText.style.display = "none";
-              document.getElementById("success-sound").play();
             } else if (data.status === "AlreadyRecorded") {
               statusDiv.innerHTML = `⚠️ Посещаемость уже зарегистрирована <strong>${data.name}</strong>.`;
               statusDiv.className = "warning";
