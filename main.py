@@ -12,6 +12,11 @@ import threading
 import time
 from gspread_formatting import *
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask import Flask
+import ssl
+
+app = Flask(__name__)
+
 
 
 app = Flask(__name__)
