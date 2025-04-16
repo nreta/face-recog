@@ -511,9 +511,6 @@ def logout():
 # Run the Flask app
 if __name__ == "__main__":
     threading.Thread(target=check_and_create_sheet_daily, daemon=True).start()
-    context = ssl.SSLContext(ssl.PROTOCOL_TLS)
-    context.load_cert_chain(certfile='cert.pem', keyfile='private.key')
-
-    # Run the app with SSL (HTTPS)
-    app.run(debug=True, host='0.0.0.0', port=5000, ssl_context=context)
+    
+    app.run(debug=True)
 
