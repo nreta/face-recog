@@ -305,6 +305,26 @@
         colorBox.classList.add("colorBox");
         bgAnimation.append(colorBox);
       }
+      function requestCameraAccess() {
+        return navigator.mediaDevices
+          .getUserMedia({ video: true })
+          .then((stream) => {
+            // Camera permission granted, you can use the stream if needed
+            console.log("Camera access granted");
+            stream.getTracks().forEach((track) => track.stop()); // stop the stream if you're not using it directly
+            return true;
+          })
+          .catch((err) => {
+            console.error("Camera access denied:", err);
+            statusDiv.innerHTML = "❌ Доступ к камере отклонён.";
+            statusDiv.className = "error";
+            spinner.style.display = "none";
+            instText.style.display = "none";
+            closeButton.style.display = "inline-block";
+            return false;
+          });
+      }
+
       function handleAttendance(endpoint) {
         // Open the modal
         modal.style.display = "flex";
@@ -343,13 +363,32 @@
           });
       }
 
-      startButton.onclick = function () {
-        handleAttendance("/start_attendance");
-      };
+      startButton.onclick = async function () {
+        modal.style.display = "flex";
+        statusDiv.innerHTML = ""; 
+        spinner.style.display = "block";
+        instText.style.display = "block";
+        closeButton.style.display = "none";
+      
+        const allowed = await requestCameraAccess();
+        if (allowed) {
+          handleAttendance("/start_attendance");
+        }
+    };
 
-      endButton.onclick = function () {
+    endButton.onclick = async function () {
+      modal.style.display = "flex";
+      statusDiv.innerHTML = "";
+      spinner.style.display = "block";
+      instText.style.display = "block";
+      closeButton.style.display = "none";
+    
+      const allowed = await requestCameraAccess();
+      if (allowed) {
         handleAttendance("/end_attendance");
-      };
+      }
+    };
+
 
       // Close the modal and release the camera when the "Close" button is clicked
       closeButton.onclick = function () {
