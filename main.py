@@ -278,7 +278,8 @@ def process_attendance(shift_type):
             name = known_face_names[best_match_index]
 
             # You can now save attendance for `name` based on `shift_type` (start or end)
-            current_time = datetime.now().strftime("%H:%M")
+            current_time = datetime.now(ZoneInfo("Europe/Moscow")).strftime("%H:%M")
+
             save_attendance(name, current_time, shift_type)
 
             return jsonify({"status": "Success", "message": f"Attendance recorded for {name}.", "name": name})
