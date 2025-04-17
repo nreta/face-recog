@@ -18,21 +18,19 @@ from zoneinfo import ZoneInfo
 app = Flask(__name__)
 app.secret_key = "admin"  # Change this to a secure key
 
-# Global caches
-global known_face_encodings = []
-global known_face_names = []
-
 def preload_known_faces():
+    global known_face_encodings, known_face_names
+    known_face_encodings = []
+    known_face_names = []
+
     conn = sqlite3.connect('employees.db')
     cursor = conn.cursor()
     cursor.execute('SELECT name, face_encoding FROM employee_faces')
-    known_face_encodings = []
-    known_face_names = []
 
     for name, encoding in cursor.fetchall():
         known_face_encodings.append(np.frombuffer(encoding, dtype=np.float64))
         known_face_names.append(name)
-    
+
     conn.close()
 
 
