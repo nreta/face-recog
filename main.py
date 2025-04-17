@@ -503,6 +503,13 @@ def logout():
     session.pop("manager_logged_in", None)  # Remove login session
     return redirect(url_for("index"))
 
+@app.route('/release_camera', methods=['POST'])
+def release_camera():
+    # If you have a global camera object like `cv2.VideoCapture(0)`
+    # you can release it here if needed.
+    print("Camera released (dummy handler)")
+    return jsonify({'status': 'Camera released'})
+
 # Run the Flask app
 if __name__ == "__main__":
     threading.Thread(target=check_and_create_sheet_daily, daemon=True).start()
