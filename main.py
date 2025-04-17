@@ -242,6 +242,7 @@ def start_attendance():
 def end_attendance():
     return process_attendance("end")
 
+@app.route('/process_attendance/<shift_type>', methods=['POST'])
 def process_attendance():
     video_capture = cv2.VideoCapture(0)
 
