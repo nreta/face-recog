@@ -243,70 +243,48 @@ def end_attendance():
     return process_attendance("end")
 
 @app.route('/process_attendance/<shift_type>', methods=['POST'])
-def process_attendance():
-    video_capture = cv2.VideoCapture(0)
+def process_attendance(shift_type):
+    # Get the base64 encoded image from the POST request
+    data = request.get_json()
+    img_data = data.get('image')
 
-    known_face_encodings, known_face_names, known_face_roles, known_face_images = load_known_faces()
-    tolerance = 0.45  # Lower tolerance for more strict matching
+    # Decode the base64 image
+    img_data = img_data.split(",")[1]  # Remove the "data:image/jpeg;base64," part
+    img_bytes = base64.b64decode(img_data)
 
-    attendance_marked = set()
+    # Convert byte data to numpy array
+    img_array = np.frombuffer(img_bytes, dtype=np.uint8)
 
-    while True:
-        ret, frame = video_capture.read()
-        if not ret:
-            break
+    # Decode image using OpenCV
+    frame = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
 
-        # Resize frame for faster processing
-        small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
-        rgb_small_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
+    # Check for faces
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    face_locations = face_recognition.face_locations(rgb_frame)
 
-        # Detect faces and encode them
-        face_locations = face_recognition.face_locations(rgb_small_frame)
-        face_encodings = face_recognition.face_encodings(rgb_small_frame, face_locations)
+    if len(face_locations) == 0:
+        return jsonify({"status": "NoFaceDetected", "message": "No face detected."})
 
-        for face_encoding, face_location in zip(face_encodings, face_locations):
-            # Find distances between this encoding and known faces
-            face_distances = face_recognition.face_distance(known_face_encodings, face_encoding)
-            best_match_index = np.argmin(face_distances)
+    # Encode faces
+    face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
 
-            if face_distances[best_match_index] < tolerance:
-                name = known_face_names[best_match_index]
-                role = known_face_roles[best_match_index]
-                image_path = known_face_images[best_match_index]
+    for face_encoding in face_encodings:
+        matches = face_recognition.compare_faces(known_face_encodings, face_encoding, tolerance=0.45)
 
-                if name not in attendance_marked:
-                    now = datetime.now()
-                    date_str = now.strftime("%Y-%m-%d")
-                    time_str = now.strftime("%H:%M:%S")
+        face_distances = face_recognition.face_distance(known_face_encodings, face_encoding)
+        best_match_index = np.argmin(face_distances)
 
-                    # Save attendance
-                    conn = sqlite3.connect("face_recognition.db")
-                    c = conn.cursor()
-                    c.execute("INSERT INTO attendance (name, role, date, time) VALUES (?, ?, ?, ?)",
-                              (name, role, date_str, time_str))
-                    conn.commit()
-                    conn.close()
+        if face_distances[best_match_index] < 0.45:
+            name = known_face_names[best_match_index]
 
-                    attendance_marked.add(name)
+            # You can now save attendance for `name` based on `shift_type` (start or end)
+            current_time = datetime.now(ZoneInfo("Europe/Moscow")).strftime("%H:%M")
 
-                    # Display matched image
-                    matched_image = cv2.imread(image_path)
-                    matched_image = cv2.resize(matched_image, (200, 200))
-                    cv2.imshow("Matched Image", matched_image)
+            save_attendance(name, current_time, shift_type)
 
-                # Draw box and name on screen
-                top, right, bottom, left = [v * 4 for v in face_location]  # Scale back up
-                cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
-                cv2.putText(frame, name, (left, top - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+            return jsonify({"status": "Success", "message": f"Attendance recorded for {name}.", "name": name})
 
-        cv2.imshow("Attendance System", frame)
-
-        # Quit on 'q' key
-        if cv2.waitKey(1) & 0xFF == ord("q"):
-            break
-
-    video_capture.release()
-    cv2.destroyAllWindows()
+    return jsonify({"status": "NoMatch", "message": "Face detected but no match found."})
 
 # Route to upload a new employee
 @app.route('/upload', methods=['GET'])
@@ -359,7 +337,7 @@ def upload_employee():
                             cursor.execute('SELECT face_encoding FROM employee_faces')
                             for record in cursor.fetchall():
                                 stored_encoding = np.frombuffer(record[0], dtype=np.float64)
-                                if face_recognition.compare_faces([stored_encoding], face_encoding)[0]:
+                                if face_recognition.compare_faces([stored_encoding], face_encoding, tolerance=0.45)[0]:
                                     error = "Сотрудник с таким лицом уже существует!"
                                     break
 
