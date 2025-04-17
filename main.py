@@ -228,6 +228,8 @@ known_face_encodings, known_face_names = load_known_faces()
 # Route to display the main page
 @app.route('/')
 def index():
+    if session.get("manager_logged_in"):
+        logout():
     return render_template('index.html')
 
 
