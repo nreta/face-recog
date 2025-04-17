@@ -379,10 +379,9 @@
         instText.style.display = "block";
         closeButton.style.display = "none";
       
-        const allowed = await requestCameraAccess();
-        if (allowed) {
-          handleAttendance("/start_attendance");
-        }
+        
+        handleAttendance("/start_attendance");
+        
         
     };
 
@@ -393,11 +392,10 @@
       instText.style.display = "block";
       closeButton.style.display = "none";
       
-      const allowed = await requestCameraAccess();
-      if (allowed) {
+      
         handleAttendance("/end_attendance");
-      }
-    };
+    }
+    
 
 
       closeButton.onclick = function () {
