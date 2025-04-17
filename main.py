@@ -230,6 +230,7 @@ known_face_encodings, known_face_names = load_known_faces()
 def index():
     if session.get("manager_logged_in"):
         logout()
+    load_known_faces()
     return render_template('index.html')
 
 
