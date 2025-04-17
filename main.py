@@ -511,6 +511,10 @@ def logout():
 # Run the Flask app
 if __name__ == "__main__":
     threading.Thread(target=check_and_create_sheet_daily, daemon=True).start()
+    # Start ngrok tunnel
+    public_url = ngrok.connect(5000)  # Port 5000 is the Flask default
+    print(f" * ngrok tunnel available at: {public_url}")
+
+    app.run(debug=True, use_reloader=False)
     
-    app.run(debug=True)
 
