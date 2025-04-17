@@ -399,8 +399,6 @@ def list_employees():
 
     return render_template('employees.html', employees=employees_with_images)
 
-
-# Route to delete an employee
 @app.route('/delete_employee/<int:employee_id>', methods=['POST'])
 def delete_employee(employee_id):
     conn = sqlite3.connect('employees.db')
@@ -411,8 +409,8 @@ def delete_employee(employee_id):
     conn.commit()
     conn.close()
 
-
-    # Reload the known faces after deletion
+    # 🔧 Fix: Make sure to update global variables
+    global known_face_encodings, known_face_names
     known_face_encodings, known_face_names = load_known_faces()
 
     print(f"Reloaded {len(known_face_encodings)} face encodings after deletion.")
