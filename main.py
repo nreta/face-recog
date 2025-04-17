@@ -239,77 +239,57 @@ def start_attendance():
 @app.route('/end_attendance', methods=['GET'])
 def end_attendance():
     return process_attendance("end")
+import base64
+import cv2
+import numpy as np
+from flask import Flask, request, jsonify
+import face_recognition
+import io
+from PIL import Image
+import threading
+import time
 
-
-# Process attendance (start or end)
+@app.route('/process_attendance/<shift_type>', methods=['POST'])
 def process_attendance(shift_type):
-    video_capture = cv2.VideoCapture(0)
+    # Get the base64 encoded image from the POST request
+    data = request.get_json()
+    img_data = data.get('image')
 
-    if not video_capture.isOpened():
-        print("Unable to access the camera.")
-        return jsonify({"status": "Error", "message": "Unable to access camera"})
+    # Decode the base64 image
+    img_data = img_data.split(",")[1]  # Remove the "data:image/jpeg;base64," part
+    img_bytes = base64.b64decode(img_data)
 
-    recorded_names = load_existing_attendance()
-    frame_counter = 0
-    attendance_status = {"status": "NoFaceDetected", "message": "No face detected."}
+    # Convert byte data to numpy array
+    img_array = np.frombuffer(img_bytes, dtype=np.uint8)
 
-    process_every_n_frames = 5  # Process every 5th frame
+    # Decode image using OpenCV
+    frame = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
 
-    try:
-        while True:
-            ret, frame = video_capture.read()
-            if not ret:
-                print("Failed to read frame from camera.")
-                break
+    # Check for faces
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    face_locations = face_recognition.face_locations(rgb_frame)
 
-            frame_counter += 1
+    if len(face_locations) == 0:
+        return jsonify({"status": "NoFaceDetected", "message": "No face detected."})
 
-            if frame_counter % process_every_n_frames == 0:
-                small_frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
-                rgb_small_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
+    # Encode faces
+    face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
 
-                face_locations = face_recognition.face_locations(rgb_small_frame)
-                print(f"Detected {len(face_locations)} face(s) in the frame.")
+    for face_encoding in face_encodings:
+        matches = face_recognition.compare_faces(known_face_encodings, face_encoding)
+        face_distances = face_recognition.face_distance(known_face_encodings, face_encoding)
+        best_match_index = np.argmin(face_distances)
 
-                if not face_locations:
-                    attendance_status = {"status": "NoFaceDetected", "message": "No face detected."}
-                    break  # Exit the loop if no face is detected
+        if matches[best_match_index]:
+            name = known_face_names[best_match_index]
 
-                face_encodings = face_recognition.face_encodings(rgb_small_frame, face_locations)
+            # You can now save attendance for `name` based on `shift_type` (start or end)
+            current_time = datetime.now().strftime("%H:%M")
+            save_attendance(name, current_time, shift_type)
 
-                for face_encoding in face_encodings:
-                    matches = face_recognition.compare_faces(known_face_encodings, face_encoding)
-                    face_distances = face_recognition.face_distance(known_face_encodings, face_encoding)
-                    best_match_index = np.argmin(face_distances)
+            return jsonify({"status": "Success", "message": f"Attendance recorded for {name}.", "name": name})
 
-                    print(f"Matches: {matches}")
-
-                    if matches[best_match_index]:
-                        name = known_face_names[best_match_index]
-
-                        if shift_type == "start" and name in recorded_names:
-                            attendance_status = {"status": "AlreadyRecorded", "message": f"{name} already recorded.", "name": name}
-                            print(f"{name} already recorded.")
-                            break  # Break out of the face processing loop to return status.
-
-                        current_time = datetime.now().strftime("%H:%M")  # Save only hours and minutes
-                        save_attendance(name, current_time, shift_type)
-
-                        attendance_status = {"status": "Success", "message": f"Attendance recorded for {name}.", "name": name}
-                        print(f"Attendance recorded for {name}.")
-                        break  # Break out to return status.
-                    else:
-                        attendance_status = {"status": "NoMatch", "message": "Face detected but no match found."}
-                        break  # Break out to return status.
-
-                if attendance_status["status"] in ["Success", "AlreadyRecorded", "NoMatch", "NoFaceDetected"]:
-                    break  # Exit the main loop to return the status.
-
-    finally:
-        video_capture.release()
-
-    print(f"Final attendance status: {attendance_status}")
-    return jsonify(attendance_status)
+    return jsonify({"status": "NoMatch", "message": "Face detected but no match found."})
 
 # Route to upload a new employee
 @app.route('/upload', methods=['GET'])
