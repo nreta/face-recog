@@ -274,7 +274,7 @@ def process_attendance(shift_type):
         face_distances = face_recognition.face_distance(known_face_encodings, face_encoding)
         best_match_index = np.argmin(face_distances)
 
-        if face_distances[best_match_index] < 0.45:
+        if matches[best_match_index]:
             name = known_face_names[best_match_index]
 
             # You can now save attendance for `name` based on `shift_type` (start or end)
