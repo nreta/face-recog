@@ -229,7 +229,7 @@ known_face_encodings, known_face_names = load_known_faces()
 @app.route('/')
 def index():
     if session.get("manager_logged_in"):
-        logout():
+        logout()
     return render_template('index.html')
 
 
