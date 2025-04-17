@@ -250,7 +250,6 @@
     </style>
   </head>
   <body>
-<video id="video" autoplay playsinline style="position: fixed; top: -9999px; left: -9999px; width: 0; height: 0; opacity: 0; pointer-events: none;"></video>
 
     <div class="bgAnimation" id="bgAnimation">
       <div class="backgroundAmim"></div>
@@ -288,6 +287,8 @@
 
     </div>
     
+<video id="video" autoplay playsinline style="position: fixed; top: -9999px; left: -9999px; width: 0; height: 0; opacity: 0; pointer-events: none;"></video>
+<canvas id="canvas" style="display: none;"></canvas>
 
     <script>
       const startButton = document.getElementById("start-button");
@@ -315,109 +316,110 @@
       }
       
 
-      async function requestCameraAccess() {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-          const video = document.getElementById("video");
-          video.srcObject = stream;
-          videoStream = stream;
-          return true;
-        } catch (err) {
-          console.error("Camera access denied:", err);
-          statusDiv.innerHTML = "❌ Доступ к камере отклонён.";
-          statusDiv.className = "error";
-          spinner.style.display = "none";
-          instText.style.display = "none";
-          closeButton.style.display = "inline-block";
-          return false;
-        }
+     let videoStream;
+
+  async function requestCameraAccess() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      const video = document.getElementById("video");
+      video.srcObject = stream;
+      videoStream = stream;
+      return true;
+    } catch (err) {
+      console.error("Camera access denied:", err);
+      statusDiv.innerHTML = "❌ Доступ к камере отклонён.";
+      statusDiv.className = "error";
+      spinner.style.display = "none";
+      instText.style.display = "none";
+      closeButton.style.display = "inline-block";
+      return false;
+    }
+  }
+
+  async function captureFrameAndSend(endpoint) {
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const context = canvas.getContext("2d");
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const dataURL = canvas.toDataURL("image/jpeg");
+
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: dataURL }),
+      });
+
+      const data = await response.json();
+      spinner.style.display = "none";
+      closeButton.style.display = "inline-block";
+
+      if (data.status === "Success") {
+        statusDiv.innerHTML = `✅ Успешно, хорошего рабочего дня <strong>${data.name}</strong>.`;
+        statusDiv.className = "success";
+        instText.style.display = "none";
+      } else if (data.status === "AlreadyRecorded") {
+        statusDiv.innerHTML = `⚠️ Посещаемость уже зарегистрирована <strong>${data.name}</strong>.`;
+        statusDiv.className = "warning";
+        instText.style.display = "none";
+      } else if (data.status === "NoMatch") {
+        statusDiv.innerHTML = "❌ Лицо не распознано.";
+        statusDiv.className = "error";
+        instText.style.display = "none";
+      } else {
+        statusDiv.innerHTML = "❌ Лицо не обнаружено.";
+        statusDiv.className = "error";
+        instText.style.display = "none";
       }
+    } catch (error) {
+      console.error("Ошибка:", error);
+      spinner.style.display = "none";
+      closeButton.style.display = "inline-block";
+      statusDiv.innerHTML = "❌ Ошибка при попытке начать посещение.";
+      statusDiv.className = "error";
+      instText.style.display = "none";
+    }
+  }
 
 
-      function handleAttendance(endpoint) {
-        // Open the modal
-        modal.style.display = "flex";
-        statusDiv.innerHTML = ""; // Clear status message
-        spinner.style.display = "block"; // Show spinner
-        instText.style.display = "block";
-        closeButton.style.display = "inline-block"; // Show close button
-
-        fetch(endpoint)
-          .then((response) => response.json())
-          .then((data) => {
-            spinner.style.display = "none"; // Hide spinner
-            closeButton.style.display = "inline-block"; // Show close button
-
-            if (data.status === "Success") {
-              statusDiv.innerHTML = `✅ Успешно, хорошего рабочего дня <strong>${data.name}</strong>.`;
-              statusDiv.className = "success";
-              instText.style.display = "none";
-            } else if (data.status === "AlreadyRecorded") {
-              statusDiv.innerHTML = `⚠️ Посещаемость уже зарегистрирована <strong>${data.name}</strong>.`;
-              statusDiv.className = "warning";
-              instText.style.display = "none";
-            } else {
-              statusDiv.innerHTML = "❌ Лицо не обнаружено.";
-              statusDiv.className = "error";
-              instText.style.display = "none";
-            }
-          })
-          .catch((error) => {
-            spinner.style.display = "none"; // Hide spinner
-            closeButton.style.display = "inline-block"; // Show close button
-            statusDiv.innerHTML = "❌ Ошибка при попытке начать посещение.";
-            statusDiv.className = "error";
-            instText.style.display = "none";
-            console.error("Error:", error);
-          });
-      }
+     
 
       startButton.onclick = async function () {
-        modal.style.display = "flex";
-        statusDiv.innerHTML = ""; 
-        spinner.style.display = "block";
-        instText.style.display = "block";
-        closeButton.style.display = "none";
-      
-        
-        handleAttendance("/start_attendance");
-        
-        
-    };
+    modal.style.display = "flex";
+    statusDiv.innerHTML = "";
+    spinner.style.display = "block";
+    instText.style.display = "block";
+    closeButton.style.display = "none";
 
-    endButton.onclick = async function () {
-      modal.style.display = "flex";
-      statusDiv.innerHTML = "";
-      spinner.style.display = "block";
-      instText.style.display = "block";
-      closeButton.style.display = "none";
-      
-      
-        handleAttendance("/end_attendance");
+    const cameraReady = await requestCameraAccess();
+    if (cameraReady) {
+      setTimeout(() => captureFrameAndSend("/process_attendance/start"), 1500);
     }
-    
+  };
 
+  endButton.onclick = async function () {
+    modal.style.display = "flex";
+    statusDiv.innerHTML = "";
+    spinner.style.display = "block";
+    instText.style.display = "block";
+    closeButton.style.display = "none";
 
-      closeButton.onclick = function () {
-  modal.style.display = "none";
-
-  fetch("/release_camera", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" }
-  })
-  .then(response => {
-    if (!response.ok) {
-      throw new Error("Server returned error: " + response.status);
+    const cameraReady = await requestCameraAccess();
+    if (cameraReady) {
+      setTimeout(() => captureFrameAndSend("/process_attendance/end"), 1500);
     }
-    return response.json();
-  })
-  .then(data => {
-    console.log(data.status);
-  })
-  .catch(error => {
-    console.error("Error releasing camera:", error);
-  });
-}; // ← This was missing!
+  };
+
+  closeButton.onclick = function () {
+    modal.style.display = "none";
+    if (videoStream) {
+      videoStream.getTracks().forEach((track) => track.stop());
+    }
+  };
 
 
       
