@@ -425,6 +425,14 @@ def delete_employee(employee_id):
     conn.commit()
     conn.close()
 
+# Remove from in-memory cache
+    try:
+        index = known_face_names.index(name)
+        del known_face_names[index]
+        del known_face_encodings[index]
+    except ValueError:
+        pass  # Name not found in cache (just in case)
+
     # Reload the known faces after deletion
     global known_face_encodings, known_face_names
     known_face_encodings, known_face_names = load_known_faces()
