@@ -13,7 +13,7 @@ import time
 from gspread_formatting import *
 from werkzeug.security import generate_password_hash, check_password_hash
 from zoneinfo import ZoneInfo 
-
+import bisect
 
 app = Flask(__name__)
 app.secret_key = "admin"  # Change this to a secure key
@@ -29,6 +29,7 @@ def preload_known_faces():
         known_face_encodings.append(np.frombuffer(encoding, dtype=np.float64))
         known_face_names.append(name)
 
+    known_face_names.sort()
     conn.close()
 
 
@@ -231,12 +232,14 @@ def load_known_faces():
         known_face_names.append(name)
 
     conn.close()
-
+    
     return known_face_encodings, known_face_names
 
 
 # Global variables to store known faces
 known_face_encodings, known_face_names = load_known_faces()
+# Sort known employee names before performing binary search
+known_face_names.sort()
 
 
 # Route to display the main page
@@ -256,6 +259,18 @@ def start_attendance():
 def end_attendance():
     return process_attendance("end")
 
+def find_employee_name_binary(name, sorted_names):
+    left, right = 0, len(sorted_names) - 1
+    while left <= right:
+        mid = (left + right) // 2
+        if sorted_names[mid] == name:
+            return mid  # Name found
+        elif sorted_names[mid] < name:
+            left = mid + 1
+        else:
+            right = mid - 1
+    return -1  # Name not found
+# Modify the attendance processing route to use binary search
 @app.route('/process_attendance/<shift_type>', methods=['POST'])
 def process_attendance(shift_type):
     # Get the base64 encoded image from the POST request
@@ -290,15 +305,18 @@ def process_attendance(shift_type):
         if matches[best_match_index]:
             name = known_face_names[best_match_index]
 
-            # You can now save attendance for `name` based on `shift_type` (start or end)
-            current_time = datetime.now(ZoneInfo("Europe/Moscow")).strftime("%H:%M")
+            # Now use binary search to check if the name exists in the attendance sheet
+            index = find_employee_name_binary(name, known_face_names)
 
-            save_attendance(name, current_time, shift_type)
-
-            return jsonify({"status": "Success", "message": f"Attendance recorded for {name}.", "name": name})
+            if index != -1:
+                current_time = datetime.now(ZoneInfo("Europe/Moscow")).strftime("%H:%M")
+                save_attendance(name, current_time, shift_type)
+                return jsonify({"status": "Success", "message": f"Attendance recorded for {name}.", "name": name})
+            else:
+                return jsonify({"status": "NoMatch", "message": "Face detected but no match found."})
 
     return jsonify({"status": "NoMatch", "message": "Face detected but no match found."})
-
+    
 # Route to upload a new employee
 @app.route('/upload', methods=['GET'])
 def upload_form():
