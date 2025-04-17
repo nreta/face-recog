@@ -12,13 +12,6 @@ import threading
 import time
 from gspread_formatting import *
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask import Flask
-import ssl
-from pyngrok import ngrok
-
-
-app = Flask(__name__)
-ngrok.set_auth_token("2vqfgPv8lApp6tVbLvNltR98xsP_o9NznB3V3o37PPp7fibg")
 
 
 app = Flask(__name__)
@@ -513,10 +506,5 @@ def logout():
 # Run the Flask app
 if __name__ == "__main__":
     threading.Thread(target=check_and_create_sheet_daily, daemon=True).start()
-    # Start ngrok tunnel
-    public_url = ngrok.connect(5000)  # Port 5000 is the Flask default
-    print(f" * ngrok tunnel available at: {public_url}")
-
-    app.run(debug=True, use_reloader=False)
-    
-
+   
+    app.run(host='0.0.0.0', port=5000)
