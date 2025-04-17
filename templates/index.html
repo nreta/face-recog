@@ -402,21 +402,23 @@
       closeButton.onclick = function () {
         modal.style.display = "none";
 
-        // Call the backend to release the camera
         fetch("/release_camera", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" }
         })
-          .then((response) => response.json())
-          .then((data) => {
-            console.log(data.status); // Log the response from the backend
-          })
-          .catch((error) => {
-            console.error("Error releasing camera:", error);
-          });
-      };
+        .then(response => {
+          if (!response.ok) {
+            throw new Error("Server returned error: " + response.status);
+          }
+          return response.json();
+        })
+        .then(data => {
+          console.log(data.status);
+        })
+        .catch(error => {
+          console.error("Error releasing camera:", error);
+        });
+
       
       function toggleModal() {
         const modal = document.getElementById("sideModal");
