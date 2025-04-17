@@ -4,3 +4,4 @@ numpy
 oauth2client
 gspread-formatting
 python3-opencv
+pyngrok
