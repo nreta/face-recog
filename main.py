@@ -246,7 +246,6 @@ def end_attendance():
     return process_attendance("end")
 
 
-# Modify the attendance processing route to use binary search
 @app.route('/process_attendance/<shift_type>', methods=['POST'])
 def process_attendance(shift_type):
     # Get the base64 encoded image from the POST request
@@ -281,14 +280,13 @@ def process_attendance(shift_type):
         if matches[best_match_index]:
             name = known_face_names[best_match_index]
 
-            
-            current_time = datetime.now(ZoneInfo("Europe/Moscow")).strftime("%H:%M")
+            # You can now save attendance for `name` based on `shift_type` (start or end)
+            current_time = datetime.now().strftime("%H:%M")
             save_attendance(name, current_time, shift_type)
-        else:
-            return jsonify({"status": "NoMatch", "message": "Face detected but no match found."})
+
+            return jsonify({"status": "Success", "message": f"Attendance recorded for {name}.", "name": name})
 
     return jsonify({"status": "NoMatch", "message": "Face detected but no match found."})
-    
 # Route to upload a new employee
 @app.route('/upload', methods=['GET'])
 def upload_form():
