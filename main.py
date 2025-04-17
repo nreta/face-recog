@@ -284,8 +284,8 @@ def process_attendance(shift_type):
             
             current_time = datetime.now(ZoneInfo("Europe/Moscow")).strftime("%H:%M")
             save_attendance(name, current_time, shift_type)
-         else:
-             return jsonify({"status": "NoMatch", "message": "Face detected but no match found."})
+        else:
+            return jsonify({"status": "NoMatch", "message": "Face detected but no match found."})
 
     return jsonify({"status": "NoMatch", "message": "Face detected but no match found."})
     
