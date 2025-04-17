@@ -429,7 +429,6 @@ def delete_employee(employee_id):
         pass  # Name not found in cache (just in case)
 
     # Reload the known faces after deletion
-    global known_face_encodings, known_face_names
     known_face_encodings, known_face_names = load_known_faces()
 
     print(f"Reloaded {len(known_face_encodings)} face encodings after deletion.")
