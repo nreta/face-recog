@@ -300,14 +300,6 @@
         modal.style.display = "none"; // Hide modal on load
       };
 
-      // Access the user's camera
-      navigator.mediaDevices.getUserMedia({ video: true })
-            .then((stream) => {
-                video.srcObject = stream;
-            })
-            .catch((error) => {
-                console.error('Error accessing the camera', error);
-        });
     
       const bgAnimation = document.getElementById("bgAnimation");
 
@@ -318,7 +310,7 @@
         colorBox.classList.add("colorBox");
         bgAnimation.append(colorBox);
       }
-      let videoStream = null;
+      
 
       async function requestCameraAccess() {
         try {
