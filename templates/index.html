@@ -281,7 +281,11 @@
           Close
         </button>
       </div>
+      <video id="video" autoplay playsinline style="display: none;"></video>
+      <canvas id="canvas" style="display: none;"></canvas>
+
     </div>
+    
 
     <script>
       const startButton = document.getElementById("start-button");
@@ -305,25 +309,26 @@
         colorBox.classList.add("colorBox");
         bgAnimation.append(colorBox);
       }
-      function requestCameraAccess() {
-        return navigator.mediaDevices
-          .getUserMedia({ video: true })
-          .then((stream) => {
-            // Camera permission granted, you can use the stream if needed
-            console.log("Camera access granted");
-            stream.getTracks().forEach((track) => track.stop()); // stop the stream if you're not using it directly
-            return true;
-          })
-          .catch((err) => {
-            console.error("Camera access denied:", err);
-            statusDiv.innerHTML = "❌ Доступ к камере отклонён.";
-            statusDiv.className = "error";
-            spinner.style.display = "none";
-            instText.style.display = "none";
-            closeButton.style.display = "inline-block";
-            return false;
-          });
+      let videoStream = null;
+
+      async function requestCameraAccess() {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          const video = document.getElementById("video");
+          video.srcObject = stream;
+          videoStream = stream;
+          return true;
+        } catch (err) {
+          console.error("Camera access denied:", err);
+          statusDiv.innerHTML = "❌ Доступ к камере отклонён.";
+          statusDiv.className = "error";
+          spinner.style.display = "none";
+          instText.style.display = "none";
+          closeButton.style.display = "inline-block";
+          return false;
+        }
       }
+
 
       function handleAttendance(endpoint) {
         // Open the modal
@@ -333,12 +338,30 @@
         instText.style.display = "block";
         closeButton.style.display = "inline-block"; // Show close button
 
-        fetch(endpoint)
+        const video = document.getElementById("video");
+        const canvas = document.getElementById("canvas");
+      
+        // Draw the current frame
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+      
+        // Convert to base64
+        const imageData = canvas.toDataURL("image/jpeg");
+      
+        // Now send to Flask backend
+        fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ image: imageData }),
+        })
           .then((response) => response.json())
           .then((data) => {
-            spinner.style.display = "none"; // Hide spinner
-            closeButton.style.display = "inline-block"; // Show close button
-
+            spinner.style.display = "none";
+            closeButton.style.display = "inline-block";
+      
             if (data.status === "Success") {
               statusDiv.innerHTML = `✅ Успешно, хорошего рабочего дня <strong>${data.name}</strong>.`;
               statusDiv.className = "success";
@@ -354,8 +377,8 @@
             }
           })
           .catch((error) => {
-            spinner.style.display = "none"; // Hide spinner
-            closeButton.style.display = "inline-block"; // Show close button
+            spinner.style.display = "none";
+            closeButton.style.display = "inline-block";
             statusDiv.innerHTML = "❌ Ошибка при попытке начать посещение.";
             statusDiv.className = "error";
             instText.style.display = "none";
@@ -393,22 +416,13 @@
       // Close the modal and release the camera when the "Close" button is clicked
       closeButton.onclick = function () {
         modal.style.display = "none";
-
-        // Call the backend to release the camera
-        fetch("/release_camera", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        })
-          .then((response) => response.json())
-          .then((data) => {
-            console.log(data.status); // Log the response from the backend
-          })
-          .catch((error) => {
-            console.error("Error releasing camera:", error);
-          });
+      
+        if (videoStream) {
+          videoStream.getTracks().forEach((track) => track.stop());
+          videoStream = null;
+        }
       };
+      
       function toggleModal() {
         const modal = document.getElementById("sideModal");
         modal.style.display = modal.style.display === "flex" ? "none" : "flex";
