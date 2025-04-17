@@ -300,6 +300,41 @@
       window.onload = function () {
         modal.style.display = "none"; // Hide modal on load
       };
+
+      // Access the user's camera
+      navigator.mediaDevices.getUserMedia({ video: true })
+            .then((stream) => {
+                video.srcObject = stream;
+            })
+            .catch((error) => {
+                console.error('Error accessing the camera', error);
+        });
+      // Capture a frame and send it to the server
+        function captureFrame() {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const imageData = canvas.toDataURL('image/jpeg');  // Base64-encoded image data
+            return imageData;
+        }
+      // Send captured frame to the backend for face recognition
+        function sendFrame(shiftType) {
+            const imageData = captureFrame();
+            fetch(`/process_attendance?shift_type=${shiftType}&image_data=${encodeURIComponent(imageData)}`, {
+                method: 'GET'
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data);
+                alert(data.message);  // Show attendance result
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
       const bgAnimation = document.getElementById("bgAnimation");
 
       const numberOfColorBoxes = 400;
@@ -397,6 +432,7 @@
         if (allowed) {
           handleAttendance("/start_attendance");
         }
+        sendFrame("start");
     };
 
     endButton.onclick = async function () {
@@ -405,7 +441,7 @@
       spinner.style.display = "block";
       instText.style.display = "block";
       closeButton.style.display = "none";
-    
+      sendFrame("end");
       const allowed = await requestCameraAccess();
       if (allowed) {
         handleAttendance("/end_attendance");
