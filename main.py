@@ -18,20 +18,6 @@ import bisect
 app = Flask(__name__)
 app.secret_key = "admin"  # Change this to a secure key
 
-known_face_encodings = []
-known_face_names = []
-def preload_known_faces():
-    conn = sqlite3.connect('employees.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT name, face_encoding FROM employee_faces')
-
-    for name, encoding in cursor.fetchall():
-        known_face_encodings.append(np.frombuffer(encoding, dtype=np.float64))
-        known_face_names.append(name)
-
-    known_face_names.sort()
-    conn.close()
-
 
 
 # Google Sheets setup
@@ -324,15 +310,14 @@ def upload_form():
         return redirect(url_for("login"))  # Redirect to login if not authorized
     return render_template('upload.html')
 
-
 @app.route('/upload', methods=['GET', 'POST'])
 def upload_employee():
     if not session.get("manager_logged_in"):
         return redirect(url_for("login"))
-
+    
     error = None
-    success = None
-
+    success = None  # Initialize success message
+    
     if request.method == 'POST':
         if 'file' not in request.files:
             error = "Файл не загружен"
@@ -366,39 +351,41 @@ def upload_employee():
                         if cursor.fetchone():
                             error = f"Сотрудник с таким именем '{name}' уже существует!"
                         else:
-                            # Use preloaded encodings to detect duplicates
-                            distances = face_recognition.face_distance(known_face_encodings, face_encoding)
-                            if any(dist < 0.45 for dist in distances):  # You can tweak this threshold
-                                error = "Сотрудник с таким лицом уже существует!"
-                            else:
+                            cursor.execute('SELECT face_encoding FROM employee_faces')
+                            for record in cursor.fetchall():
+                                stored_encoding = np.frombuffer(record[0], dtype=np.float64)
+                                if face_recognition.compare_faces([stored_encoding], face_encoding)[0]:
+                                    error = "Сотрудник с таким лицом уже существует!"
+                                    break
+
+                            if not error:
                                 cursor.execute('''
-                                    INSERT INTO employee_faces (name, image, face_encoding)
-                                    VALUES (?, ?, ?)
+                                INSERT INTO employee_faces (name, image, face_encoding)
+                                VALUES (?, ?, ?)
                                 ''', (name, image_data, face_encoding_bytes))
                                 conn.commit()
 
-                                # Update in-memory cache
-                                known_face_encodings.append(face_encoding)
-                                known_face_names.append(name)
+                                global known_face_encodings, known_face_names
+                                known_face_encodings, known_face_names = load_known_faces()
 
                                 sheet_data = sheet.get_all_records(head=3)
                                 existing_names = [record["Сотрудник"] for record in sheet_data if "Сотрудник" in record]
-
+                                
                                 if not ((f"{name} (Start)" in existing_names) or (f"{name} (End)" in existing_names)):
                                     sheet.append_row([f"{name} (Start)"] + [""] * 31)
                                     sheet.append_row([f"{name} (End)"] + [""] * 31)
-
+                                
                                 success = f"Сотрудник '{name}' успешно загружен!"
+                                # Don't redirect - render template with success message
 
                         conn.close()
                 except Exception as e:
-                    error = f"Ошибка: {str(e)}"
+                    error = f"An error occurred: {str(e)}"
                 finally:
                     if os.path.exists(file_path):
                         os.remove(file_path)
 
-    return render_template('upload.html', error=error, success=success)
-
+    return render_template('upload.html', error=error, success=success) 
 
 @app.route('/employees')
 def list_employees():
@@ -438,13 +425,6 @@ def delete_employee(employee_id):
     conn.commit()
     conn.close()
 
-# Remove from in-memory cache
-    try:
-        index = known_face_names.index(name)
-        del known_face_names[index]
-        del known_face_encodings[index]
-    except ValueError:
-        pass  # Name not found in cache (just in case)
 
     # Reload the known faces after deletion
     known_face_encodings, known_face_names = load_known_faces()
@@ -523,5 +503,5 @@ def release_camera():
 # Run the Flask app
 if __name__ == "__main__":
     threading.Thread(target=check_and_create_sheet_daily, daemon=True).start()
-    preload_known_faces()
+   
     app.run(host='0.0.0.0', port=5555)
