@@ -245,17 +245,7 @@ def start_attendance():
 def end_attendance():
     return process_attendance("end")
 
-def find_employee_name_binary(name, sorted_names):
-    left, right = 0, len(sorted_names) - 1
-    while left <= right:
-        mid = (left + right) // 2
-        if sorted_names[mid] == name:
-            return mid  # Name found
-        elif sorted_names[mid] < name:
-            left = mid + 1
-        else:
-            right = mid - 1
-    return -1  # Name not found
+
 # Modify the attendance processing route to use binary search
 @app.route('/process_attendance/<shift_type>', methods=['POST'])
 def process_attendance(shift_type):
@@ -291,15 +281,11 @@ def process_attendance(shift_type):
         if matches[best_match_index]:
             name = known_face_names[best_match_index]
 
-            # Now use binary search to check if the name exists in the attendance sheet
-            index = find_employee_name_binary(name, known_face_names)
-
-            if index != -1:
-                current_time = datetime.now(ZoneInfo("Europe/Moscow")).strftime("%H:%M")
-                save_attendance(name, current_time, shift_type)
-                return jsonify({"status": "Success", "message": f"Attendance recorded for {name}.", "name": name})
-            else:
-                return jsonify({"status": "NoMatch", "message": "Face detected but no match found."})
+            
+            current_time = datetime.now(ZoneInfo("Europe/Moscow")).strftime("%H:%M")
+            save_attendance(name, current_time, shift_type)
+         else:
+             return jsonify({"status": "NoMatch", "message": "Face detected but no match found."})
 
     return jsonify({"status": "NoMatch", "message": "Face detected but no match found."})
     
