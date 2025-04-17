@@ -224,9 +224,6 @@ def load_known_faces():
 
 # Global variables to store known faces
 known_face_encodings, known_face_names = load_known_faces()
-# Sort known employee names before performing binary search
-known_face_names.sort()
-
 
 # Route to display the main page
 @app.route('/')
