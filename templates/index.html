@@ -400,26 +400,27 @@
     };
 
 
-      // Close the modal and release the camera when the "Close" button is clicked
       closeButton.onclick = function () {
-        modal.style.display = "none";
+  modal.style.display = "none";
 
-        fetch("/release_camera", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" }
-        })
-        .then(response => {
-          if (!response.ok) {
-            throw new Error("Server returned error: " + response.status);
-          }
-          return response.json();
-        })
-        .then(data => {
-          console.log(data.status);
-        })
-        .catch(error => {
-          console.error("Error releasing camera:", error);
-        });
+  fetch("/release_camera", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" }
+  })
+  .then(response => {
+    if (!response.ok) {
+      throw new Error("Server returned error: " + response.status);
+    }
+    return response.json();
+  })
+  .then(data => {
+    console.log(data.status);
+  })
+  .catch(error => {
+    console.error("Error releasing camera:", error);
+  });
+}; // ← This was missing!
+
 
       
       function toggleModal() {
