@@ -195,35 +195,55 @@ def check_and_create_sheet_daily():
         # Wait for 24 hours before checking again
         time.sleep(86400)
 
-# Load known faces from the database
-def load_known_faces():
-    known_face_encodings = []
-    known_face_names = []
-
-    conn = sqlite3.connect('employees.db')
-    cursor = conn.cursor()
-
-    # Fetch all records from the database
-    cursor.execute('SELECT name, face_encoding FROM employee_faces')
-    records = cursor.fetchall()
-
-    print(f"Loaded {len(records)} records from the database.")
-
-    for record in records:
-        name, face_encoding = record
-        # Convert the face_encoding from bytes back to numpy array
-        face_encoding = np.frombuffer(face_encoding, dtype=np.float64)
-        print(f"Loaded face encoding for {name} with shape {face_encoding.shape}")
-        known_face_encodings.append(face_encoding)
-        known_face_names.append(name)
-
-    conn.close()
+known_face_encodings = []
+known_face_names = []
+face_data_lock = threading.Lock()  # Lock for thread-safe access
+def load_known_faces_threaded():
+    """Threaded version that runs continuously every 10 seconds"""
+    global known_face_encodings, known_face_names
     
-    return known_face_encodings, known_face_names
+    while True:
+        try:
+            print("🔄 Reloading face data from database...")
+            new_encodings, new_names = load_known_faces()
+            
+            # Thread-safe update of global variables
+            with face_data_lock:
+                known_face_encodings = new_encodings
+                known_face_names = new_names
+            
+            print(f"✅ Successfully reloaded {len(new_names)} faces")
+        except Exception as e:
+            print(f"❌ Error reloading faces: {str(e)}")
+        
+        time.sleep(10)  # Wait 10 seconds before next reload
+
+# Modify your existing load_known_faces() to be thread-safe
+def load_known_faces():
+    """Original function with added error handling"""
+    try:
+        conn = sqlite3.connect('employees.db')
+        cursor = conn.cursor()
+        cursor.execute('SELECT name, face_encoding FROM employee_faces')
+        records = cursor.fetchall()
+
+        encodings = []
+        names = []
+        
+        for record in records:
+            name, face_encoding = record
+            encodings.append(np.frombuffer(face_encoding, dtype=np.float64))
+            names.append(name)
+            
+        return encodings, names
+    except Exception as e:
+        print(f"Database error: {str(e)}")
+        return [], []  # Return empty lists on error
+    finally:
+        if 'conn' in locals():
+            conn.close()
 
 
-# Global variables to store known faces
-known_face_encodings, known_face_names = load_known_faces()
 
 # Route to display the main page
 @app.route('/')
@@ -399,6 +419,8 @@ def list_employees():
 
     return render_template('employees.html', employees=employees_with_images)
 
+
+# Route to delete an employee
 @app.route('/delete_employee/<int:employee_id>', methods=['POST'])
 def delete_employee(employee_id):
     conn = sqlite3.connect('employees.db')
@@ -409,8 +431,8 @@ def delete_employee(employee_id):
     conn.commit()
     conn.close()
 
-    # 🔧 Fix: Make sure to update global variables
-    global known_face_encodings, known_face_names
+
+    # Reload the known faces after deletion
     known_face_encodings, known_face_names = load_known_faces()
 
     print(f"Reloaded {len(known_face_encodings)} face encodings after deletion.")
@@ -487,5 +509,12 @@ def release_camera():
 # Run the Flask app
 if __name__ == "__main__":
     threading.Thread(target=check_and_create_sheet_daily, daemon=True).start()
-   
+    known_face_encodings, known_face_names = load_known_faces()
+    
+    # Start background thread
+    face_loader_thread = threading.Thread(
+        target=load_known_faces_threaded,
+        daemon=True  # Thread will exit when main program does
+    )
+    face_loader_thread.start()
     app.run(host='0.0.0.0', port=5555)
