@@ -267,56 +267,45 @@ def end_attendance():
 
 @app.route('/process_attendance/<shift_type>', methods=['POST'])
 def process_attendance(shift_type):
-    # 1. Faster image decoding
-    try:
-        header, img_data = request.get_json()['image'].split(",", 1)
-        frame = cv2.imdecode(
-            np.frombuffer(base64.b64decode(img_data.encode('ascii')), 
-            dtype=np.uint8), 
-            cv2.IMREAD_COLOR
-        )
-    except:
-        return jsonify({"status": "Error", "message": "Invalid image"})
+    # Get the base64 encoded image from the POST request
+    data = request.get_json()
+    img_data = data.get('image')
 
-    # 2. Optimized face detection
-    small_frame = cv2.resize(frame, (0, 0), fx=0.5, fy=0.5)
-    rgb_small_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
-    face_locations = face_recognition.face_locations(rgb_small_frame, model="hog")
-    
-    if not face_locations:
+    # Decode the base64 image
+    img_data = img_data.split(",")[1]  # Remove the "data:image/jpeg;base64," part
+    img_bytes = base64.b64decode(img_data)
+
+    # Convert byte data to numpy array
+    img_array = np.frombuffer(img_bytes, dtype=np.uint8)
+
+    # Decode image using OpenCV
+    frame = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+
+    # Check for faces
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    face_locations = face_recognition.face_locations(rgb_frame)
+
+    if len(face_locations) == 0:
         return jsonify({"status": "NoFaceDetected", "message": "No face detected."})
 
-    # Scale back up
-    face_locations = [(top*2, right*2, bottom*2, left*2) for (top, right, bottom, left) in face_locations]
-    
-    # 3. Get encodings only for found faces
-    face_encodings = face_recognition.face_encodings(
-        cv2.cvtColor(frame, cv2.COLOR_BGR2RGB),
-        face_locations
-    )
+    # Encode faces
+    face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
 
-    # 4. Parallel processing for multiple faces
-    with face_data_lock:  # Thread-safe access
-        known_encodings_np = np.array(known_face_encodings)
-        known_names = known_face_names
+    for face_encoding in face_encodings:
+        matches = face_recognition.compare_faces(known_face_encodings, face_encoding, tolerance=0.45)
 
-    with ThreadPoolExecutor() as executor:
-        results = list(executor.map(
-            lambda enc: find_best_match(known_encodings_np, enc),
-            face_encodings
-        ))
+        face_distances = face_recognition.face_distance(known_face_encodings, face_encoding)
+        best_match_index = np.argmin(face_distances)
 
-    # 5. Process results
-    for idx, (min_index, min_distance) in enumerate(results):
-        if min_distance < 0.45:
-            name = known_names[min_index]
+        if face_distances[best_match_index] < 0.45:
+            name = known_face_names[best_match_index]
+
+            # You can now save attendance for `name` based on `shift_type` (start or end)
             current_time = datetime.now(ZoneInfo("Europe/Moscow")).strftime("%H:%M")
+
             save_attendance(name, current_time, shift_type)
-            return jsonify({
-                "status": "Success",
-                "message": f"Attendance recorded for {name}.",
-                "name": name
-            })
+
+            return jsonify({"status": "Success", "message": f"Attendance recorded for {name}.", "name": name})
 
     return jsonify({"status": "NoMatch", "message": "Face detected but no match found."})
 # Route to upload a new employee
