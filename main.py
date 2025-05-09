@@ -62,6 +62,8 @@ days_in_month = {
     30: ['Апрель', 'Июнь', 'Сентябрь', 'Ноябрь'],
     28: ['Февраль']
 }
+
+
 def get_month_key(month_name):
     for key, value in days_in_month.items():
         if month_name in value:  # Check if month_name is in the list
@@ -281,8 +283,15 @@ def process_attendance(shift_type):
     # Decode image using OpenCV
     frame = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
 
+    # Resize the image to speed up face recognition (reduce to 1/4 of the original size)
+    height, width = frame.shape[:2]
+    scale_factor = 0.25  # Adjust this for the desired speed/accuracy trade-off
+    frame_resized = cv2.resize(frame, (int(width * scale_factor), int(height * scale_factor)))
+
+    # Convert the resized frame to RGB
+    rgb_frame = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB)
+
     # Check for faces
-    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     face_locations = face_recognition.face_locations(rgb_frame)
 
     if len(face_locations) == 0:
@@ -303,12 +312,12 @@ def process_attendance(shift_type):
             # You can now save attendance for `name` based on `shift_type` (start or end)
             current_time = datetime.now(ZoneInfo("Europe/Moscow")).strftime("%H:%M")
 
-            save_attendance(name, current_time, shift_type)
+            # Save attendance in a separate thread to avoid blocking the main process
+            threading.Thread(target=save_attendance, args=(name, current_time, shift_type)).start()
 
             return jsonify({"status": "Success", "message": f"Attendance recorded for {name}.", "name": name})
 
     return jsonify({"status": "NoMatch", "message": "Face detected but no match found."})
-# Route to upload a new employee
 @app.route('/upload', methods=['GET'])
 def upload_form():
     if not session.get("manager_logged_in"):  # Check if manager is logged in
