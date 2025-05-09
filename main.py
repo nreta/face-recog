@@ -222,7 +222,6 @@ def load_known_faces_threaded():
 
 # Modify your existing load_known_faces() to be thread-safe
 def load_known_faces():
-    """Original function with added error handling"""
     try:
         conn = sqlite3.connect('employees.db')
         cursor = conn.cursor()
@@ -236,10 +235,10 @@ def load_known_faces():
             name, face_encoding = record
             encodings.append(np.frombuffer(face_encoding, dtype=np.float64))
             names.append(name)
-            
+        
         return encodings, names
     except Exception as e:
-        print(f"Database error: {str(e)}")
+        print(f"Database error while loading faces: {str(e)}")
         return [], []  # Return empty lists on error
     finally:
         if 'conn' in locals():
@@ -268,54 +267,63 @@ def end_attendance():
 
 @app.route('/process_attendance/<shift_type>', methods=['POST'])
 def process_attendance(shift_type):
-    # Get the base64 encoded image from the POST request
-    data = request.get_json()
-    img_data = data.get('image')
+    try:
+        # Get the base64 encoded image from the POST request
+        data = request.get_json()
+        img_data = data.get('image')
 
-    # Decode the base64 image
-    img_data = img_data.split(",")[1]  # Remove the "data:image/jpeg;base64," part
-    img_bytes = base64.b64decode(img_data)
+        if not img_data:
+            return jsonify({"status": "Error", "message": "No image data provided."})
 
-    # Convert byte data to numpy array
-    img_array = np.frombuffer(img_bytes, dtype=np.uint8)
+        # Decode the base64 image
+        img_data = img_data.split(",")[1]  # Remove the "data:image/jpeg;base64," part
+        img_bytes = base64.b64decode(img_data)
 
-    # Decode image using OpenCV
-    frame = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+        # Convert byte data to numpy array
+        img_array = np.frombuffer(img_bytes, dtype=np.uint8)
 
-    # Resize the image to speed up face recognition (reduce to 1/4 of the original size)
-    height, width = frame.shape[:2]
-    scale_factor = 0.20 # Adjust this for the desired speed/accuracy trade-off
-    frame_resized = cv2.resize(frame, (int(width * scale_factor), int(height * scale_factor)))
+        # Decode image using OpenCV
+        frame = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
 
-    # Convert the resized frame to RGB
-    rgb_frame = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB)
+        # Resize the image to speed up face recognition
+        height, width = frame.shape[:2]
+        scale_factor = 0.20  # Adjust this for the desired speed/accuracy trade-off
+        frame_resized = cv2.resize(frame, (int(width * scale_factor), int(height * scale_factor)))
 
-    # Check for faces
-    face_locations = face_recognition.face_locations(rgb_frame)
+        # Convert the resized frame to RGB
+        rgb_frame = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB)
 
-    if len(face_locations) == 0:
-        return jsonify({"status": "NoFaceDetected", "message": "No face detected."})
+        # Check for faces
+        face_locations = face_recognition.face_locations(rgb_frame)
 
-    # Encode faces
-    face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
+        if len(face_locations) == 0:
+            return jsonify({"status": "NoFaceDetected", "message": "No face detected."})
 
-    for face_encoding in face_encodings:
-        matches = face_recognition.compare_faces(known_face_encodings, face_encoding, tolerance=0.45)
+        # Encode faces
+        face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
 
-        face_distances = face_recognition.face_distance(known_face_encodings, face_encoding)
-        best_match_index = np.argmin(face_distances)
+        for face_encoding in face_encodings:
+            matches = face_recognition.compare_faces(known_face_encodings, face_encoding, tolerance=0.45)
 
-        if face_distances[best_match_index] < 0.45:
-            name = known_face_names[best_match_index]
+            face_distances = face_recognition.face_distance(known_face_encodings, face_encoding)
+            best_match_index = np.argmin(face_distances)
 
-            # You can now save attendance for `name` based on `shift_type` (start or end)
-            current_time = datetime.now(ZoneInfo("Europe/Moscow")).strftime("%H:%M")
+            if face_distances[best_match_index] < 0.45:
+                name = known_face_names[best_match_index]
 
-            threading.Thread(target=save_attendance, args=(name, current_time, shift_type)).start()
-            return jsonify({"status": "Success", "message": f"Face matched. Attendance is being saved in background.", "name": name})
+                # Save attendance in a separate thread
+                current_time = datetime.now(ZoneInfo("Europe/Moscow")).strftime("%H:%M")
+
+                threading.Thread(target=save_attendance, args=(name, current_time, shift_type)).start()
+                return jsonify({"status": "Success", "message": f"Face matched. Attendance is being saved in background.", "name": name})
+
+        return jsonify({"status": "NoMatch", "message": "Face detected but no match found."})
+
+    except Exception as e:
+        print(f"❌ Error in process_attendance: {str(e)}")
+        return jsonify({"status": "Error", "message": "An error occurred while processing attendance."})
 
 
-    return jsonify({"status": "NoMatch", "message": "Face detected but no match found."})
 @app.route('/upload', methods=['GET'])
 def upload_form():
     if not session.get("manager_logged_in"):  # Check if manager is logged in
@@ -324,80 +332,80 @@ def upload_form():
 
 @app.route('/upload', methods=['GET', 'POST'])
 def upload_employee():
-    if not session.get("manager_logged_in"):
-        return redirect(url_for("login"))
-    
     error = None
     success = None  # Initialize success message
     
-    if request.method == 'POST':
-        if 'file' not in request.files:
-            error = "Файл не загружен"
-        else:
-            file = request.files['file']
-            name = request.form.get('name')
+    try:
+        if not session.get("manager_logged_in"):
+            return redirect(url_for("login"))
 
-            if file.filename == '' or not name:
-                error = "Неверный ввод"
+        if request.method == 'POST':
+            if 'file' not in request.files:
+                error = "Файл не загружен"
             else:
-                file_path = f"temp_{file.filename}"
-                file.save(file_path)
+                file = request.files['file']
+                name = request.form.get('name')
 
-                try:
-                    image = face_recognition.load_image_file(file_path)
-                    face_encodings = face_recognition.face_encodings(image)
+                if file.filename == '' or not name:
+                    error = "Неверный ввод"
+                else:
+                    file_path = f"temp_{file.filename}"
+                    file.save(file_path)
 
-                    if not face_encodings:
-                        error = "На изображении не обнаружено ни одного лица."
-                    else:
-                        face_encoding = face_encodings[0]
-                        face_encoding_bytes = face_encoding.tobytes()
+                    try:
+                        image = face_recognition.load_image_file(file_path)
+                        face_encodings = face_recognition.face_encodings(image)
 
-                        with open(file_path, 'rb') as f:
-                            image_data = f.read()
-
-                        conn = sqlite3.connect('employees.db')
-                        cursor = conn.cursor()
-
-                        cursor.execute('SELECT name FROM employee_faces WHERE name = ?', (name,))
-                        if cursor.fetchone():
-                            error = f"Сотрудник с таким именем '{name}' уже существует!"
+                        if not face_encodings:
+                            error = "На изображении не обнаружено ни одного лица."
                         else:
-                            cursor.execute('SELECT face_encoding FROM employee_faces')
-                            for record in cursor.fetchall():
-                                stored_encoding = np.frombuffer(record[0], dtype=np.float64)
-                                if face_recognition.compare_faces([stored_encoding], face_encoding, tolerance=0.45)[0]:
-                                    error = "Сотрудник с таким лицом уже существует!"
-                                    break
+                            face_encoding = face_encodings[0]
+                            face_encoding_bytes = face_encoding.tobytes()
 
-                            if not error:
-                                cursor.execute('''
-                                INSERT INTO employee_faces (name, image, face_encoding)
-                                VALUES (?, ?, ?)
-                                ''', (name, image_data, face_encoding_bytes))
-                                conn.commit()
+                            with open(file_path, 'rb') as f:
+                                image_data = f.read()
 
-                                global known_face_encodings, known_face_names
-                                known_face_encodings, known_face_names = load_known_faces()
+                            conn = sqlite3.connect('employees.db')
+                            cursor = conn.cursor()
 
-                                sheet_data = sheet.get_all_records(head=3)
-                                existing_names = [record["Сотрудник"] for record in sheet_data if "Сотрудник" in record]
-                                
-                                if not ((f"{name} (Start)" in existing_names) or (f"{name} (End)" in existing_names)):
-                                    sheet.append_row([f"{name} (Start)"] + [""] * 31)
-                                    sheet.append_row([f"{name} (End)"] + [""] * 31)
-                                
-                                success = f"Сотрудник '{name}' успешно загружен!"
-                                # Don't redirect - render template with success message
+                            cursor.execute('SELECT name FROM employee_faces WHERE name = ?', (name,))
+                            if cursor.fetchone():
+                                error = f"Сотрудник с таким именем '{name}' уже существует!"
+                            else:
+                                cursor.execute('SELECT face_encoding FROM employee_faces')
+                                for record in cursor.fetchall():
+                                    stored_encoding = np.frombuffer(record[0], dtype=np.float64)
+                                    if face_recognition.compare_faces([stored_encoding], face_encoding, tolerance=0.45)[0]:
+                                        error = "Сотрудник с таким лицом уже существует!"
+                                        break
 
-                        conn.close()
-                except Exception as e:
-                    error = f"An error occurred: {str(e)}"
-                finally:
-                    if os.path.exists(file_path):
-                        os.remove(file_path)
+                                if not error:
+                                    cursor.execute('''INSERT INTO employee_faces (name, image, face_encoding)
+                                                       VALUES (?, ?, ?)''', (name, image_data, face_encoding_bytes))
+                                    conn.commit()
 
-    return render_template('upload.html', error=error, success=success) 
+                                    global known_face_encodings, known_face_names
+                                    known_face_encodings, known_face_names = load_known_faces()
+
+                                    # Update the sheet
+                                    sheet_data = sheet.get_all_records(head=3)
+                                    existing_names = [record["Сотрудник"] for record in sheet_data if "Сотрудник" in record]
+                                    
+                                    if not ((f"{name} (Start)" in existing_names) or (f"{name} (End)" in existing_names)):
+                                        sheet.append_row([f"{name} (Start)"] + [""] * 31)
+                                        sheet.append_row([f"{name} (End)"] + [""] * 31)
+                                    
+                                    success = f"Сотрудник '{name}' успешно загружен!"
+                    except Exception as e:
+                        error = f"Ошибка при загрузке изображения: {str(e)}"
+                    finally:
+                        if os.path.exists(file_path):
+                            os.remove(file_path)
+
+    except Exception as e:
+        error = f"An unexpected error occurred: {str(e)}"
+    
+    return render_template('upload.html', error=error, success=success)
 
 @app.route('/employees')
 def list_employees():
