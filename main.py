@@ -505,15 +505,8 @@ def release_camera():
     print("Camera released (dummy handler)")
     return jsonify({'status': 'Camera released'})
 
-# Run the Flask app
-if __name__ == "__main__":
+if __name__ == '__main__':
+    threading.Thread(target=load_known_faces_threaded, daemon=True).start()
     threading.Thread(target=check_and_create_sheet_daily, daemon=True).start()
-    known_face_encodings, known_face_names = load_known_faces()
-    
-    # Start background thread
-    face_loader_thread = threading.Thread(
-        target=load_known_faces_threaded,
-        daemon=True  # Thread will exit when main program does
-    )
-    face_loader_thread.start()
-    app.run(host='0.0.0.0', port=5555)
+    app.run(debug=True)
+
