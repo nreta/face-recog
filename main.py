@@ -233,7 +233,7 @@ def save_known_faces(encodings, names):
         pickle.dump({"encodings": encodings, "names": names}, f)
         
 def load_known_faces_from_db():
-    """Fetch encodings from database (used when no cache exists)."""
+    """Fetch encodings from database."""
     encodings = []
     names = []
     try:
@@ -243,8 +243,11 @@ def load_known_faces_from_db():
         records = cursor.fetchall()
 
         for name, face_encoding in records:
-            encodings.append(np.frombuffer(face_encoding, dtype=np.float64))
-            names.append(name)
+            if face_encoding:
+                encodings.append(np.frombuffer(face_encoding, dtype=np.float64))
+                names.append(name)
+    except Exception as e:
+        print(f"❌ Error loading faces from DB: {e}")
     finally:
         conn.close()
     return encodings, names
