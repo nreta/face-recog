@@ -250,7 +250,6 @@ def load_known_faces():
 def index():
     if session.get("manager_logged_in"):
         logout()
-    load_known_faces()
     return render_template('index.html')
 
 
@@ -506,7 +505,7 @@ def release_camera():
     return jsonify({'status': 'Camera released'})
 
 if __name__ == "__main__":
-    threading.Thread(target=check_and_create_sheet_daily, daemon=True).start()
     threading.Thread(target=load_known_faces_threaded, daemon=True).start()
-    known_face_encodings, known_face_names = load_known_faces()
+    threading.Thread(target=check_and_create_sheet_daily, daemon=True).start()
     app.run(debug=True)
+
