@@ -252,7 +252,6 @@ def load_known_faces():
 def index():
     if session.get("manager_logged_in"):
         logout()
-    load_known_faces()
     return render_template('index.html')
 
 
@@ -285,7 +284,7 @@ def process_attendance(shift_type):
 
     # Resize the image to speed up face recognition (reduce to 1/4 of the original size)
     height, width = frame.shape[:2]
-    scale_factor = 0.25  # Adjust this for the desired speed/accuracy trade-off
+    scale_factor = 0.20 # Adjust this for the desired speed/accuracy trade-off
     frame_resized = cv2.resize(frame, (int(width * scale_factor), int(height * scale_factor)))
 
     # Convert the resized frame to RGB
@@ -312,10 +311,9 @@ def process_attendance(shift_type):
             # You can now save attendance for `name` based on `shift_type` (start or end)
             current_time = datetime.now(ZoneInfo("Europe/Moscow")).strftime("%H:%M")
 
-            # Save attendance in a separate thread to avoid blocking the main process
             threading.Thread(target=save_attendance, args=(name, current_time, shift_type)).start()
+            return jsonify({"status": "Success", "message": f"Face matched. Attendance is being saved in background.", "name": name})
 
-            return jsonify({"status": "Success", "message": f"Attendance recorded for {name}.", "name": name})
 
     return jsonify({"status": "NoMatch", "message": "Face detected but no match found."})
 @app.route('/upload', methods=['GET'])
