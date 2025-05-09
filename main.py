@@ -14,8 +14,6 @@ from gspread_formatting import *
 from werkzeug.security import generate_password_hash, check_password_hash
 from zoneinfo import ZoneInfo 
 import bisect
-import pickle
-
 
 app = Flask(__name__)
 app.secret_key = "admin"  # Change this to a secure key
@@ -64,13 +62,6 @@ days_in_month = {
     30: ['Апрель', 'Июнь', 'Сентябрь', 'Ноябрь'],
     28: ['Февраль']
 }
-
-face_data_lock = threading.Lock()
-
-known_face_encodings = []
-known_face_names = []
-ENCODINGS_FILE = 'encodings.pkl'
-
 def get_month_key(month_name):
     for key, value in days_in_month.items():
         if month_name in value:  # Check if month_name is in the list
@@ -228,50 +219,30 @@ def load_known_faces_threaded():
         time.sleep(60)  # Wait 10 seconds before next reload
 
 # Modify your existing load_known_faces() to be thread-safe
-def save_known_faces(encodings, names):
-    with open(ENCODINGS_FILE, 'wb') as f:
-        pickle.dump({"encodings": encodings, "names": names}, f)
-        
-def load_known_faces_from_db():
-    """Fetch encodings from database."""
-    encodings = []
-    names = []
+def load_known_faces():
+    """Original function with added error handling"""
     try:
         conn = sqlite3.connect('employees.db')
         cursor = conn.cursor()
         cursor.execute('SELECT name, face_encoding FROM employee_faces')
         records = cursor.fetchall()
 
-        for name, face_encoding in records:
-            if face_encoding:
-                encodings.append(np.frombuffer(face_encoding, dtype=np.float64))
-                names.append(name)
+        encodings = []
+        names = []
+        
+        for record in records:
+            name, face_encoding = record
+            encodings.append(np.frombuffer(face_encoding, dtype=np.float64))
+            names.append(name)
+            
+        return encodings, names
     except Exception as e:
-        print(f"❌ Error loading faces from DB: {e}")
+        print(f"Database error: {str(e)}")
+        return [], []  # Return empty lists on error
     finally:
-        conn.close()
-    return encodings, names
+        if 'conn' in locals():
+            conn.close()
 
-def load_known_faces():
-    """Load face encodings (from cache if available)."""
-    global known_face_encodings, known_face_names
-
-    try:
-        # Attempt to load from cache
-        with open(ENCODINGS_FILE, 'rb') as f:
-            data = pickle.load(f)
-            known_face_encodings = data["encodings"]
-            known_face_names = data["names"]
-            print(f"✅ Loaded {len(known_face_names)} faces from cache.")
-    except FileNotFoundError:
-        # Cache doesn't exist, load from DB
-        print("ℹ️ Cache not found, loading from database...")
-        encodings, names = load_known_faces_from_db()
-        with face_data_lock:
-            known_face_encodings = encodings
-            known_face_names = names
-        save_known_faces(encodings, names)
-        print(f"✅ Loaded {len(names)} faces from database and saved to cache.")
 
 
 # Route to display the main page
@@ -279,6 +250,7 @@ def load_known_faces():
 def index():
     if session.get("manager_logged_in"):
         logout()
+    load_known_faces()
     return render_template('index.html')
 
 
@@ -295,47 +267,48 @@ def end_attendance():
 
 @app.route('/process_attendance/<shift_type>', methods=['POST'])
 def process_attendance(shift_type):
+    # Get the base64 encoded image from the POST request
     data = request.get_json()
     img_data = data.get('image')
 
-    # Decode base64
-    img_data = img_data.split(",")[1]
+    # Decode the base64 image
+    img_data = img_data.split(",")[1]  # Remove the "data:image/jpeg;base64," part
     img_bytes = base64.b64decode(img_data)
+
+    # Convert byte data to numpy array
     img_array = np.frombuffer(img_bytes, dtype=np.uint8)
+
+    # Decode image using OpenCV
     frame = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
 
-    # Resize for faster processing
-    small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
-    rgb_small_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
+    # Check for faces
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    face_locations = face_recognition.face_locations(rgb_frame)
 
-    # Detect faces using HOG model (fastest for CPU)
-    face_locations = face_recognition.face_locations(rgb_small_frame, model='hog')
-    if not face_locations:
+    if len(face_locations) == 0:
         return jsonify({"status": "NoFaceDetected", "message": "No face detected."})
 
-    face_encodings = face_recognition.face_encodings(rgb_small_frame, face_locations)
+    # Encode faces
+    face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
 
     for face_encoding in face_encodings:
-        with face_data_lock:
-            # Compare with known face encodings
-            if known_face_encodings:
-                face_distances = face_recognition.face_distance(known_face_encodings, face_encoding)
-                best_match_index = np.argmin(face_distances)
-                if face_distances[best_match_index] < 0.45:
-                    name = known_face_names[best_match_index]
+        matches = face_recognition.compare_faces(known_face_encodings, face_encoding, tolerance=0.45)
 
-                    current_time = datetime.now(ZoneInfo("Europe/Moscow")).strftime("%H:%M")
-                    save_attendance(name, current_time, shift_type)
+        face_distances = face_recognition.face_distance(known_face_encodings, face_encoding)
+        best_match_index = np.argmin(face_distances)
 
-                    # Cleanup large variables to reduce memory load
-                    del frame, small_frame, rgb_small_frame, face_encodings, img_array, img_bytes
+        if face_distances[best_match_index] < 0.45:
+            name = known_face_names[best_match_index]
 
-                    return jsonify({"status": "Success", "name": name, "message": f"Attendance recorded for {name}."})
+            # You can now save attendance for `name` based on `shift_type` (start or end)
+            current_time = datetime.now(ZoneInfo("Europe/Moscow")).strftime("%H:%M")
 
-    # Cleanup if no match found
-    del frame, small_frame, rgb_small_frame, face_encodings, img_array, img_bytes
+            save_attendance(name, current_time, shift_type)
+
+            return jsonify({"status": "Success", "message": f"Attendance recorded for {name}.", "name": name})
+
     return jsonify({"status": "NoMatch", "message": "Face detected but no match found."})
-
+# Route to upload a new employee
 @app.route('/upload', methods=['GET'])
 def upload_form():
     if not session.get("manager_logged_in"):  # Check if manager is logged in
@@ -532,23 +505,15 @@ def release_camera():
     print("Camera released (dummy handler)")
     return jsonify({'status': 'Camera released'})
 
-def reload_faces_periodically():
-    while True:
-        time.sleep(3600)  # Reload every hour (adjust as needed)
-        print("🔄 Periodic reload of face data...")
-        encodings, names = load_known_faces_from_db()
-
-        with face_data_lock:
-            known_face_encodings.clear()
-            known_face_names.clear()
-            known_face_encodings.extend(encodings)
-            known_face_names.extend(names)
-        save_known_faces(encodings, names)
-        print(f"✅ Reloaded {len(names)} faces.")
-
-
+# Run the Flask app
 if __name__ == "__main__":
-    threading.Thread(target=load_known_faces_threaded, daemon=True).start()
     threading.Thread(target=check_and_create_sheet_daily, daemon=True).start()
-    app.run(debug=True,port=5005)
-
+    known_face_encodings, known_face_names = load_known_faces()
+    
+    # Start background thread
+    face_loader_thread = threading.Thread(
+        target=load_known_faces_threaded,
+        daemon=True  # Thread will exit when main program does
+    )
+    face_loader_thread.start()
+    app.run(host='0.0.0.0', port=5555)
