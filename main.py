@@ -267,48 +267,57 @@ def end_attendance():
 
 @app.route('/process_attendance/<shift_type>', methods=['POST'])
 def process_attendance(shift_type):
-    # Get the base64 encoded image from the POST request
     data = request.get_json()
     img_data = data.get('image')
 
-    # Decode the base64 image
-    img_data = img_data.split(",")[1]  # Remove the "data:image/jpeg;base64," part
-    img_bytes = base64.b64decode(img_data)
+    if not img_data:
+        return jsonify({"status": "Error", "message": "No image data provided."})
 
-    # Convert byte data to numpy array
-    img_array = np.frombuffer(img_bytes, dtype=np.uint8)
+    try:
+        # Remove metadata prefix and decode base64
+        img_data = img_data.split(",")[1]
+        img_bytes = base64.b64decode(img_data)
+        img_array = np.frombuffer(img_bytes, dtype=np.uint8)
+        frame = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
 
-    # Decode image using OpenCV
-    frame = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+        # Convert to RGB once
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-    # Check for faces
-    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    face_locations = face_recognition.face_locations(rgb_frame)
+        # Detect and encode faces
+        face_locations = face_recognition.face_locations(rgb_frame)
+        if not face_locations:
+            return jsonify({"status": "NoFaceDetected", "message": "No face detected."})
 
-    if len(face_locations) == 0:
-        return jsonify({"status": "NoFaceDetected", "message": "No face detected."})
+        face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
 
-    # Encode faces
-    face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
+        # Lock face data access during read
+        with face_data_lock:
+            local_encodings = known_face_encodings.copy()
+            local_names = known_face_names.copy()
 
-    for face_encoding in face_encodings:
-        matches = face_recognition.compare_faces(known_face_encodings, face_encoding, tolerance=0.45)
+        for face_encoding in face_encodings:
+            face_distances = face_recognition.face_distance(local_encodings, face_encoding)
 
-        face_distances = face_recognition.face_distance(known_face_encodings, face_encoding)
-        best_match_index = np.argmin(face_distances)
+            if not face_distances.size:
+                continue
 
-        if face_distances[best_match_index] < 0.45:
-            name = known_face_names[best_match_index]
+            best_match_index = np.argmin(face_distances)
+            if face_distances[best_match_index] < 0.45:
+                name = local_names[best_match_index]
+                current_time = datetime.now(ZoneInfo("Europe/Moscow")).strftime("%H:%M")
 
-            # You can now save attendance for `name` based on `shift_type` (start or end)
-            current_time = datetime.now(ZoneInfo("Europe/Moscow")).strftime("%H:%M")
+                result = save_attendance(name, current_time, shift_type)
+                return jsonify({
+                    "status": result["status"],
+                    "message": result["message"],
+                    "name": name
+                })
 
-            save_attendance(name, current_time, shift_type)
+        return jsonify({"status": "NoMatch", "message": "Face detected but no match found."})
 
-            return jsonify({"status": "Success", "message": f"Attendance recorded for {name}.", "name": name})
+    except Exception as e:
+        return jsonify({"status": "Error", "message": f"Exception: {str(e)}"})
 
-    return jsonify({"status": "NoMatch", "message": "Face detected but no match found."})
-# Route to upload a new employee
 @app.route('/upload', methods=['GET'])
 def upload_form():
     if not session.get("manager_logged_in"):  # Check if manager is logged in
