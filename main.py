@@ -14,6 +14,8 @@ from gspread_formatting import *
 from werkzeug.security import generate_password_hash, check_password_hash
 from zoneinfo import ZoneInfo 
 import bisect
+import gc  # Add this at the top with other imports
+from concurrent.futures import ThreadPoolExecutor
 
 app = Flask(__name__)
 app.secret_key = "admin"  # Change this to a secure key
