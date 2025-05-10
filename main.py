@@ -201,25 +201,23 @@ known_face_encodings = []
 known_face_names = []
 face_data_lock = threading.Lock()  # Lock for thread-safe access
 def load_known_faces_threaded():
-    """Threaded version that runs continuously every 10 seconds"""
     global known_face_encodings, known_face_names
     
     while True:
         try:
-            print("🔄 Reloading face data from database...")
-            new_encodings, new_names = load_known_faces()
+            new_encodings, new_names = load_known_faces()  # Gets basic encodings
             
-            # Thread-safe update of global variables
+            # Add optimization here:
+            new_encodings = [enc.copy() for enc in new_encodings]
+            
             with face_data_lock:
                 known_face_encodings = new_encodings
                 known_face_names = new_names
-            
-            print(f"✅ Successfully reloaded {len(new_names)} faces")
+                
         except Exception as e:
-            print(f"❌ Error reloading faces: {str(e)}")
+            print(f"Error reloading faces: {str(e)}")
         
-        time.sleep(60)  # Wait 10 seconds before next reload
-
+        time.sleep(60)
 # Modify your existing load_known_faces() to be thread-safe
 def load_known_faces():
     try:
@@ -231,20 +229,22 @@ def load_known_faces():
         encodings = []
         names = []
         
+        # First load all encodings normally
         for record in records:
             name, face_encoding = record
             encodings.append(np.frombuffer(face_encoding, dtype=np.float64))
             names.append(name)
         
+        # THEN optimize the encodings (this is the correct placement)
+        encodings = [enc.copy() for enc in encodings]  # Force contiguous memory
+        
         return encodings, names
     except Exception as e:
         print(f"Database error while loading faces: {str(e)}")
-        return [], []  # Return empty lists on error
+        return [], []
     finally:
         if 'conn' in locals():
             conn.close()
-
-
 
 # Route to display the main page
 @app.route('/')
@@ -268,61 +268,80 @@ def end_attendance():
 @app.route('/process_attendance/<shift_type>', methods=['POST'])
 def process_attendance(shift_type):
     try:
-        # Get the base64 encoded image from the POST request
+        # Get and decode image
         data = request.get_json()
-        img_data = data.get('image')
-
-        if not img_data:
-            return jsonify({"status": "Error", "message": "No image data provided."})
-
-        # Decode the base64 image
-        img_data = img_data.split(",")[1]  # Remove the "data:image/jpeg;base64," part
+        img_data = data.get('image').split(",")[1]
         img_bytes = base64.b64decode(img_data)
-
-        # Convert byte data to numpy array
+        
+        # Optimized image processing
         img_array = np.frombuffer(img_bytes, dtype=np.uint8)
-
-        # Decode image using OpenCV
         frame = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
-
-        # Resize the image to speed up face recognition
+        
+        # Smart resizing
         height, width = frame.shape[:2]
-        scale_factor = 0.20  # Adjust this for the desired speed/accuracy trade-off
-        frame_resized = cv2.resize(frame, (int(width * scale_factor), int(height * scale_factor)))
+        if width > 800:
+            scale = 800 / width
+            frame = cv2.resize(frame, (0,0), fx=scale, fy=scale)
+        
+        # Efficient RGB conversion
+        rgb_frame = frame[:, :, ::-1]  # Faster than cvtColor
+        
+        # Optimized face detection
+        face_locations = face_recognition.face_locations(
+            rgb_frame,
+            number_of_times_to_upsample=1,
+            model="hog"
+        )
+        
+        if not face_locations:
+            del frame, rgb_frame  # Cleanup
+            return jsonify({"status": "NoFaceDetected"})
+        
+        # Process only the largest face
+        main_face = max(face_locations, key=lambda loc: (loc[2]-loc[0])*(loc[3]-loc[1]))
+        
+        # Get face encoding with optimized parameters
+        face_encoding = face_recognition.face_encodings(
+            rgb_frame,
+            known_face_locations=[main_face],
+            num_jitters=1
+        )[0]
 
-        # Convert the resized frame to RGB
-        rgb_frame = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB)
-
-        # Check for faces
-        face_locations = face_recognition.face_locations(rgb_frame)
-
-        if len(face_locations) == 0:
-            return jsonify({"status": "NoFaceDetected", "message": "No face detected."})
-
-        # Encode faces
-        face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
-
-        for face_encoding in face_encodings:
-            matches = face_recognition.compare_faces(known_face_encodings, face_encoding, tolerance=0.45)
-
-            face_distances = face_recognition.face_distance(known_face_encodings, face_encoding)
+        # Optimized face matching
+        with face_data_lock:  # Use your existing lock for thread safety
+            face_distances = face_recognition.face_distance(
+                known_face_encodings, 
+                face_encoding
+            )
             best_match_index = np.argmin(face_distances)
 
             if face_distances[best_match_index] < 0.45:
                 name = known_face_names[best_match_index]
-
-                # Save attendance in a separate thread
                 current_time = datetime.now(ZoneInfo("Europe/Moscow")).strftime("%H:%M")
+                
+                # Use ThreadPoolExecutor instead of creating new threads
+                with ThreadPoolExecutor(max_workers=4) as executor:
+                    executor.submit(save_attendance, name, current_time, shift_type)
+                
+                # Cleanup before return
+                del frame, rgb_frame, face_encoding
+                return jsonify({
+                    "status": "Success", 
+                    "message": "Attendance saved", 
+                    "name": name
+                })
 
-                threading.Thread(target=save_attendance, args=(name, current_time, shift_type)).start()
-                return jsonify({"status": "Success", "message": f"Face matched. Attendance is being saved in background.", "name": name})
-
-        return jsonify({"status": "NoMatch", "message": "Face detected but no match found."})
+        # Cleanup if no match found
+        del frame, rgb_frame, face_encoding
+        return jsonify({"status": "NoMatch", "message": "No matching face found"})
 
     except Exception as e:
         print(f"❌ Error in process_attendance: {str(e)}")
-        return jsonify({"status": "Error", "message": "An error occurred while processing attendance."})
-
+        # Ensure cleanup even if error occurs
+        if 'frame' in locals(): del frame
+        if 'rgb_frame' in locals(): del rgb_frame
+        if 'face_encoding' in locals(): del face_encoding
+        return jsonify({"status": "Error", "message": "Processing error"})
 
 @app.route('/upload', methods=['GET'])
 def upload_form():
