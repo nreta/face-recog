@@ -270,6 +270,9 @@ def process_attendance(shift_type):
     try:
         # Get and decode image
         data = request.get_json()
+        if not data or 'image' not in data:
+            return jsonify({"status": "Error", "message": "No image data provided"})
+            
         img_data = data.get('image').split(",")[1]
         img_bytes = base64.b64decode(img_data)
         
@@ -277,16 +280,19 @@ def process_attendance(shift_type):
         img_array = np.frombuffer(img_bytes, dtype=np.uint8)
         frame = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
         
+        if frame is None:
+            return jsonify({"status": "Error", "message": "Invalid image data"})
+        
         # Smart resizing
         height, width = frame.shape[:2]
         if width > 800:
             scale = 800 / width
             frame = cv2.resize(frame, (0,0), fx=scale, fy=scale)
         
-        # Efficient RGB conversion
-        rgb_frame = frame[:, :, ::-1]  # Faster than cvtColor
+        # Convert to RGB
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         
-        # Optimized face detection
+        # Face detection
         face_locations = face_recognition.face_locations(
             rgb_frame,
             number_of_times_to_upsample=1,
@@ -294,55 +300,63 @@ def process_attendance(shift_type):
         )
         
         if not face_locations:
-            del frame, rgb_frame  # Cleanup
+            del frame, rgb_frame
             return jsonify({"status": "NoFaceDetected"})
         
         # Process only the largest face
         main_face = max(face_locations, key=lambda loc: (loc[2]-loc[0])*(loc[3]-loc[1]))
         
-        # Get face encoding with optimized parameters
-        face_encoding = face_recognition.face_encodings(
-            rgb_frame,
-            known_face_locations=[main_face],
-            num_jitters=1
-        )[0]
-
-        # Optimized face matching
-        with face_data_lock:  # Use your existing lock for thread safety
-            face_distances = face_recognition.face_distance(
-                known_face_encodings, 
-                face_encoding
+        try:
+            # Get face encoding - convert face_locations to dlib format
+            face_encoding = face_recognition.face_encodings(
+                rgb_frame,
+                known_face_locations=[main_face],
+                num_jitters=1
             )
-            best_match_index = np.argmin(face_distances)
-
-            if face_distances[best_match_index] < 0.45:
-                name = known_face_names[best_match_index]
-                current_time = datetime.now(ZoneInfo("Europe/Moscow")).strftime("%H:%M")
+            
+            if not face_encoding:
+                del frame, rgb_frame
+                return jsonify({"status": "NoFaceDetected"})
                 
-                # Use ThreadPoolExecutor instead of creating new threads
-                with ThreadPoolExecutor(max_workers=4) as executor:
-                    executor.submit(save_attendance, name, current_time, shift_type)
-                
-                # Cleanup before return
-                del frame, rgb_frame, face_encoding
-                return jsonify({
-                    "status": "Success", 
-                    "message": "Attendance saved", 
-                    "name": name
-                })
+            face_encoding = face_encoding[0]  # Get first encoding
+            
+            # Face matching
+            with face_data_lock:
+                face_distances = face_recognition.face_distance(
+                    known_face_encodings,
+                    face_encoding
+                )
+                best_match_index = np.argmin(face_distances)
 
-        # Cleanup if no match found
-        del frame, rgb_frame, face_encoding
-        return jsonify({"status": "NoMatch", "message": "No matching face found"})
+                if face_distances[best_match_index] < 0.45:
+                    name = known_face_names[best_match_index]
+                    current_time = datetime.now(ZoneInfo("Europe/Moscow")).strftime("%H:%M")
+                    
+                    # Use ThreadPoolExecutor for background saving
+                    with ThreadPoolExecutor(max_workers=4) as executor:
+                        executor.submit(save_attendance, name, current_time, shift_type)
+                    
+                    return jsonify({
+                        "status": "Success", 
+                        "message": "Attendance saved", 
+                        "name": name
+                    })
+
+            return jsonify({"status": "NoMatch", "message": "No matching face found"})
+
+        except Exception as e:
+            print(f"❌ Face encoding error: {str(e)}")
+            return jsonify({"status": "Error", "message": "Face processing error"})
 
     except Exception as e:
-        print(f"❌ Error in process_attendance: {str(e)}")
-        # Ensure cleanup even if error occurs
+        print(f"❌ General error in process_attendance: {str(e)}")
+        return jsonify({"status": "Error", "message": "Processing error"})
+    finally:
+        # Cleanup
         if 'frame' in locals(): del frame
         if 'rgb_frame' in locals(): del rgb_frame
         if 'face_encoding' in locals(): del face_encoding
-        return jsonify({"status": "Error", "message": "Processing error"})
-
+        gc.collect()
 @app.route('/upload', methods=['GET'])
 def upload_form():
     if not session.get("manager_logged_in"):  # Check if manager is logged in
