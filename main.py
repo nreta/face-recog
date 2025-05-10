@@ -219,7 +219,7 @@ def load_known_faces_threaded():
         except Exception as e:
             print(f"Error reloading faces: {str(e)}")
         
-        time.sleep(60)
+        time.sleep(600)
 # Modify your existing load_known_faces() to be thread-safe
 def load_known_faces():
     try:
@@ -556,7 +556,7 @@ def release_camera():
     return jsonify({'status': 'Camera released'})
 
 if __name__ == '__main__':
-    #threading.Thread(target=load_known_faces_threaded, daemon=True).start()
+    threading.Thread(target=load_known_faces_threaded, daemon=True).start()
     threading.Thread(target=check_and_create_sheet_daily, daemon=True).start()
     app.run(debug=True)
 
