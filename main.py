@@ -274,30 +274,30 @@ def process_attendance(shift_type):
         return jsonify({"status": "Error", "message": "No image data provided."})
 
     try:
-        # Remove metadata prefix and decode base64
+        # Decode base64 image
         img_data = img_data.split(",")[1]
         img_bytes = base64.b64decode(img_data)
         img_array = np.frombuffer(img_bytes, dtype=np.uint8)
         frame = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
 
-        # Convert to RGB once
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        # Resize frame to 1/4 size for faster processing
+        small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
+        rgb_small_frame = cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB)
 
-        # Detect and encode faces
-        face_locations = face_recognition.face_locations(rgb_frame)
+        # Detect faces
+        face_locations = face_recognition.face_locations(rgb_small_frame)
         if not face_locations:
             return jsonify({"status": "NoFaceDetected", "message": "No face detected."})
 
-        face_encodings = face_recognition.face_encodings(rgb_frame, face_locations)
+        face_encodings = face_recognition.face_encodings(rgb_small_frame, face_locations)
 
-        # Lock face data access during read
+        # Load known face data
         with face_data_lock:
             local_encodings = known_face_encodings.copy()
             local_names = known_face_names.copy()
 
         for face_encoding in face_encodings:
             face_distances = face_recognition.face_distance(local_encodings, face_encoding)
-
             if not face_distances.size:
                 continue
 
