@@ -219,7 +219,7 @@ def load_known_faces_threaded():
         except Exception as e:
             print(f"Error reloading faces: {str(e)}")
         
-        time.sleep(600)
+        time.sleep(60)
 # Modify your existing load_known_faces() to be thread-safe
 def load_known_faces():
     try:
