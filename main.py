@@ -540,7 +540,7 @@ def release_camera():
     return jsonify({'status': 'Camera released'})
 
 if __name__ == '__main__':
-    threading.Thread(target=load_known_faces_threaded, daemon=True).start()
+    //threading.Thread(target=load_known_faces_threaded, daemon=True).start()
     threading.Thread(target=check_and_create_sheet_daily, daemon=True).start()
     app.run(debug=True)
 
