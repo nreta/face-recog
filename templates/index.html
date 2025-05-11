@@ -318,23 +318,31 @@
 
      let videoStream;
 
-  async function requestCameraAccess() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      const video = document.getElementById("video");
-      video.srcObject = stream;
-      videoStream = stream;
-      return true;
-    } catch (err) {
-      console.error("Camera access denied:", err);
-      statusDiv.innerHTML = "❌ Доступ к камере отклонён.";
-      statusDiv.className = "error";
-      spinner.style.display = "none";
-      instText.style.display = "none";
-      closeButton.style.display = "inline-block";
-      return false;
+async function requestCameraAccess() {
+  try {
+    const video = document.getElementById("video");
+
+    // Stop old stream if exists
+    if (videoStream) {
+      videoStream.getTracks().forEach(track => track.stop());
     }
+
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    video.srcObject = stream;
+    videoStream = stream;
+
+    return true;
+  } catch (err) {
+    console.error("Camera access denied:", err);
+    statusDiv.innerHTML = "❌ Доступ к камере отклонён.";
+    statusDiv.className = "error";
+    spinner.style.display = "none";
+    instText.style.display = "none";
+    closeButton.style.display = "inline-block";
+    return false;
   }
+}
+
 
   async function captureFrameAndSend(endpoint) {
     const video = document.getElementById("video");
