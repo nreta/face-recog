@@ -1,4 +1,4 @@
-import cv2
+ import cv2
 import face_recognition
 import numpy as np
 import os
@@ -197,7 +197,28 @@ def check_and_create_sheet_daily():
 
 known_face_encodings = []
 known_face_names = []
+face_data_lock = threading.Lock()  # Lock for thread-safe access
+def load_known_faces_threaded():
+    """Threaded version that runs continuously every 10 seconds"""
+    global known_face_encodings, known_face_names
+    
+    while True:
+        try:
+            print("🔄 Reloading face data from database...")
+            new_encodings, new_names = load_known_faces()
+            
+            # Thread-safe update of global variables
+            with face_data_lock:
+                known_face_encodings = new_encodings
+                known_face_names = new_names
+            
+            print(f"✅ Successfully reloaded {len(new_names)} faces")
+        except Exception as e:
+            print(f"❌ Error reloading faces: {str(e)}")
+        
+        time.sleep(60)  # Wait 10 seconds before next reload
 
+# Modify your existing load_known_faces() to be thread-safe
 def load_known_faces():
     """Original function with added error handling"""
     try:
@@ -222,14 +243,14 @@ def load_known_faces():
         if 'conn' in locals():
             conn.close()
 
-known_face_encodings, known_face_names = load_known_faces()
+
 
 # Route to display the main page
 @app.route('/')
 def index():
     if session.get("manager_logged_in"):
         logout()
-    
+    load_known_faces()
     return render_template('index.html')
 
 
@@ -253,9 +274,7 @@ def process_attendance(shift_type):
         return jsonify({"status": "Error", "message": "No image data provided."})
 
     try:
-        known_face_encodings, known_face_names = load_known_faces()
         # Decode base64 image
-       
         img_data = img_data.split(",")[1]
         img_bytes = base64.b64decode(img_data)
         img_array = np.frombuffer(img_bytes, dtype=np.uint8)
@@ -293,14 +312,13 @@ def process_attendance(shift_type):
                     "message": result["message"],
                     "name": name
                 })
-                
 
         return jsonify({"status": "NoMatch", "message": "Face detected but no match found."})
 
     except Exception as e:
         return jsonify({"status": "Error", "message": f"Exception: {str(e)}"})
 
-@app.route('/upload', methods=['GET'])
+@app.route('/upload_form', methods=['GET'])
 def upload_form():
     if not session.get("manager_logged_in"):  # Check if manager is logged in
         return redirect(url_for("login"))  # Redirect to login if not authorized
@@ -373,7 +391,7 @@ def upload_employee():
                                 
                                 success = f"Сотрудник '{name}' успешно загружен!"
                                 # Don't redirect - render template with success message
-                                known_face_encodings, known_face_names = load_known_faces()
+
                         conn.close()
                 except Exception as e:
                     error = f"An error occurred: {str(e)}"
@@ -491,7 +509,7 @@ def logout():
 
 @app.route('/release_camera', methods=['POST'])
 def release_camera():
-    # If you have a global camera object like `cv2.VideoCapture(0)`
+    # If you have a global camera object like cv2.VideoCapture(0)
     # you can release it here if needed.
     print("Camera released (dummy handler)")
     return jsonify({'status': 'Camera released'})
@@ -499,5 +517,12 @@ def release_camera():
 # Run the Flask app
 if __name__ == "__main__":
     threading.Thread(target=check_and_create_sheet_daily, daemon=True).start()
+    known_face_encodings, known_face_names = load_known_faces()
     
+    # Start background thread
+    face_loader_thread = threading.Thread(
+        target=load_known_faces_threaded,
+        daemon=True  # Thread will exit when main program does
+    )
+    face_loader_thread.start()
     app.run(host='0.0.0.0', port=5555)
