@@ -229,6 +229,7 @@ known_face_encodings, known_face_names = load_known_faces()
 def index():
     if session.get("manager_logged_in"):
         logout()
+    known_face_encodings, known_face_names = load_known_faces()
     return render_template('index.html')
 
 
@@ -496,5 +497,5 @@ def release_camera():
 # Run the Flask app
 if __name__ == "__main__":
     threading.Thread(target=check_and_create_sheet_daily, daemon=True).start()
-    known_face_encodings, known_face_names = load_known_faces()
+    
     app.run(host='0.0.0.0', port=5555)
