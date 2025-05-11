@@ -197,21 +197,7 @@ def check_and_create_sheet_daily():
 
 known_face_encodings = []
 known_face_names = []
-face_data_lock = threading.Lock()  # Lock for thread-safe access
-def load_known_faces_threaded():
-    global known_face_encodings, known_face_names
-    while True:
-        try:
-            print("🔄 Reloading face data from DB...")
-            new_encodings, new_names = load_known_faces()
-            with face_data_lock:
-                known_face_encodings = new_encodings
-                known_face_names = new_names
-            print(f"✅ Reloaded {len(new_names)} faces")
-        except Exception as e:
-            print(f"❌ Error loading faces: {e}")
-        time.sleep(60)
-# Modify your existing load_known_faces() to be thread-safe
+
 def load_known_faces():
     """Original function with added error handling"""
     try:
@@ -236,14 +222,13 @@ def load_known_faces():
         if 'conn' in locals():
             conn.close()
 
-
+known_face_encodings, known_face_names = load_known_faces()
 
 # Route to display the main page
 @app.route('/')
 def index():
     if session.get("manager_logged_in"):
         logout()
-    load_known_faces()
     return render_template('index.html')
 
 
@@ -268,6 +253,7 @@ def process_attendance(shift_type):
 
     try:
         # Decode base64 image
+        known_face_encodings, known_face_names = load_known_faces()
         img_data = img_data.split(",")[1]
         img_bytes = base64.b64decode(img_data)
         img_array = np.frombuffer(img_bytes, dtype=np.uint8)
@@ -384,7 +370,7 @@ def upload_employee():
                                 
                                 success = f"Сотрудник '{name}' успешно загружен!"
                                 # Don't redirect - render template with success message
-
+                                known_face_encodings, known_face_names = load_known_faces()
                         conn.close()
                 except Exception as e:
                     error = f"An error occurred: {str(e)}"
@@ -511,11 +497,4 @@ def release_camera():
 if __name__ == "__main__":
     threading.Thread(target=check_and_create_sheet_daily, daemon=True).start()
     known_face_encodings, known_face_names = load_known_faces()
-    
-    # Start background thread
-    face_loader_thread = threading.Thread(
-        target=load_known_faces_threaded,
-        daemon=True  # Thread will exit when main program does
-    )
-    face_loader_thread.start()
     app.run(host='0.0.0.0', port=5555)
