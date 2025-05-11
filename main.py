@@ -302,7 +302,7 @@ def process_attendance(shift_type):
                 continue
 
             best_match_index = np.argmin(face_distances)
-            if face_distances[best_match_index] < 0.45:
+            if face_distances[best_match_index] < 0.40:
                 name = local_names[best_match_index]
                 current_time = datetime.now(ZoneInfo("Europe/Moscow")).strftime("%H:%M")
 
