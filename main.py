@@ -253,6 +253,7 @@ def process_attendance(shift_type):
         return jsonify({"status": "Error", "message": "No image data provided."})
 
     try:
+        known_face_encodings, known_face_names = load_known_faces()
         # Decode base64 image
        
         img_data = img_data.split(",")[1]
@@ -292,7 +293,7 @@ def process_attendance(shift_type):
                     "message": result["message"],
                     "name": name
                 })
-                known_face_encodings, known_face_names = load_known_faces()
+                
 
         return jsonify({"status": "NoMatch", "message": "Face detected but no match found."})
 
