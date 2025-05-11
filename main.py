@@ -311,7 +311,7 @@ def process_attendance(shift_type):
     except Exception as e:
         return jsonify({"status": "Error", "message": f"Exception: {str(e)}"})
 
-@app.route('/upload_form', methods=['GET'])
+@app.route('/upload', methods=['GET'])
 def upload_form():
     if not session.get("manager_logged_in"):  # Check if manager is logged in
         return redirect(url_for("login"))  # Redirect to login if not authorized
