@@ -390,6 +390,7 @@ def upload_employee():
                                     sheet.append_row([f"{name} (End)"] + [""] * 31)
                                 
                                 success = f"Сотрудник '{name}' успешно загружен!"
+                                known_face_encodings, known_face_names = load_known_faces()
                                 # Don't redirect - render template with success message
 
                         conn.close()
