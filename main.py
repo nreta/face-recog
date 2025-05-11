@@ -1,4 +1,4 @@
- import cv2
+import cv2
 import face_recognition
 import numpy as np
 import os
@@ -216,7 +216,7 @@ def load_known_faces_threaded():
         except Exception as e:
             print(f"❌ Error reloading faces: {str(e)}")
         
-        time.sleep(60)  # Wait 10 seconds before next reload
+        time.sleep(86400)  # Wait 10 seconds before next reload
 
 # Modify your existing load_known_faces() to be thread-safe
 def load_known_faces():
