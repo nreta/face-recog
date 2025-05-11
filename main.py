@@ -199,25 +199,18 @@ known_face_encodings = []
 known_face_names = []
 face_data_lock = threading.Lock()  # Lock for thread-safe access
 def load_known_faces_threaded():
-    """Threaded version that runs continuously every 10 seconds"""
     global known_face_encodings, known_face_names
-    
     while True:
         try:
-            print("🔄 Reloading face data from database...")
+            print("🔄 Reloading face data from DB...")
             new_encodings, new_names = load_known_faces()
-            
-            # Thread-safe update of global variables
             with face_data_lock:
                 known_face_encodings = new_encodings
                 known_face_names = new_names
-            
-            print(f"✅ Successfully reloaded {len(new_names)} faces")
+            print(f"✅ Reloaded {len(new_names)} faces")
         except Exception as e:
-            print(f"❌ Error reloading faces: {str(e)}")
-        
-        time.sleep(60)  # Wait 10 seconds before next reload
-
+            print(f"❌ Error loading faces: {e}")
+        time.sleep(60)
 # Modify your existing load_known_faces() to be thread-safe
 def load_known_faces():
     """Original function with added error handling"""
