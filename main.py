@@ -62,6 +62,8 @@ days_in_month = {
     30: ['Апрель', 'Июнь', 'Сентябрь', 'Ноябрь'],
     28: ['Февраль']
 }
+weekdays_russian = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс']
+
 def get_month_key(month_name):
     for key, value in days_in_month.items():
         if month_name in value:  # Check if month_name is in the list
@@ -70,29 +72,45 @@ def get_month_key(month_name):
 from gspread_formatting import *
 
 def style_monthly_sheet(sheet):
-    # 1. Format Header (Row 1)
-    header_format = CellFormat(
-        backgroundColor=Color(0.2, 0.6, 0.8),  # Blue
-        textFormat=TextFormat(bold=True, fontSize=12),
-        horizontalAlignment='CENTER'
+    day_header_format = CellFormat(
+        backgroundColor=Color(0.89, 0.22, 0.21),  # Red
+        textFormat=TextFormat(bold=True, fontSize=10, foregroundColor=Color(1, 1, 1)),  # White bold text
+        horizontalAlignment='CENTER',
+        verticalAlignment='MIDDLE'
     )
-    format_cell_range(sheet, "A1:AF1", header_format)
+    format_cell_range(sheet, "B3:AF3", day_header_format)
 
-    # 2. Set Column Widths
-    set_column_width(sheet, "A", 200)  # Wider for names
-    set_column_width(sheet, "B:AF", 80)  # Narrower for dates
+    # Employee name column - set width
+    set_column_width(sheet, "A", 200)
+    set_column_width(sheet, "B:AF", 40)
 
-    # 3. Format Employee Rows (Alternate Colors)
-    for row in range(2, 100, 2):  # Every even row
-        format_cell_range(sheet, f"A{row}:AF{row}", CellFormat(
-            backgroundColor=Color(0.95, 0.95, 0.95)  # Light gray
-        ))
+    # Blue background for employee rows (A4:AF100)
+    blue_format = CellFormat(
+        backgroundColor=Color(0.38, 0.58, 0.93),  # Blue
+        textFormat=TextFormat(fontSize=10),
+        horizontalAlignment='CENTER',
+        verticalAlignment='MIDDLE'
+    )
+    format_cell_range(sheet, "A4:AF100", blue_format)
 
-    # 4. Center-align all cells
-    center_format = CellFormat(horizontalAlignment='CENTER')
-    format_cell_range(sheet, "A2:AF100", center_format)
+    # Header merge for month name (centered above day headers)
+    sheet.merge_cells('E1:M1')
+    format_cell_range(sheet, "E1", CellFormat(
+        backgroundColor=Color(1, 1, 1),
+        textFormat=TextFormat(bold=True, fontSize=12),
+        horizontalAlignment='CENTER',
+        verticalAlignment='MIDDLE'
+    ))
 
-    # 5. Add Borders
+    # "Сотрудник" cell styling
+    format_cell_range(sheet, "A3", CellFormat(
+        backgroundColor=Color(1, 1, 1),
+        textFormat=TextFormat(bold=True),
+        horizontalAlignment='CENTER',
+        verticalAlignment='MIDDLE'
+    ))
+
+    # Borders around everything
     border_format = CellFormat(
         borders=Borders(
             top=Border("SOLID"),
@@ -120,7 +138,13 @@ except gspread.exceptions.WorksheetNotFound:
         print(f"Error: Could not determine the number of days for {current_month_name}")
         days_in_month_range = []  # Empty if month is not found
     
-    
+
+    weekday_row = ['']  # First column is "Сотрудник"
+    for day in range(1, len(days_in_month_range) + 1):
+        date_obj = datetime(now.year, current_month, day)
+        weekday_row.append(weekdays_russian[date_obj.weekday() % 7])
+    sheet.append_row(weekday_row)
+
     sheet.append_row(["Сотрудник"] + days_in_month_range)
 
     # Fetch employee names from database
