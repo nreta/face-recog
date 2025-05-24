@@ -92,7 +92,7 @@ def style_monthly_sheet(sheet):
         horizontalAlignment='CENTER',
         verticalAlignment='MIDDLE'
     )
-    format_cell_range(sheet, "R1:V1", employee_header_format_month_name)
+    format_cell_range(sheet, "R1", employee_header_format_month_name)
     # Employee name column - set width
     set_column_width(sheet, "A", 200)
     set_column_width(sheet, "B:AF", 40)
