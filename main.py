@@ -132,7 +132,7 @@ except gspread.exceptions.WorksheetNotFound:
     # Create a new sheet for the month
     sheet = client.open_by_key(SHEET_ID).add_worksheet(title=SHEET_NAME, rows="100", cols="35")
 
-    
+    style_monthly_sheet(sheet)
     sheet.update_acell("R1",f"{current_month_name} Красина")
     
     
@@ -166,7 +166,7 @@ except gspread.exceptions.WorksheetNotFound:
         sheet.append_row([f"{name} (Start)"] + [""] * 31)
         sheet.append_row([f"{name} (End)"] + [""] * 31)
 
-    style_monthly_sheet(sheet)
+    
     print(f"✅ New sheet '{SHEET_NAME}' created with employees.")
 
 def check_and_create_sheet_daily():
