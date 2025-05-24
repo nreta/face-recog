@@ -74,9 +74,7 @@ from gspread_formatting import *
 def style_monthly_sheet(sheet):
     day_header_format = CellFormat(
         backgroundColor=Color(0.89, 0.22, 0.21),  # Red
-        textFormat=TextFormat(bold=True, fontSize=10, foregroundColor=Color(1, 1, 1)),  # White bold text
-        horizontalAlignment='CENTER',
-        verticalAlignment='MIDDLE'
+        textFormat=TextFormat(bold=True, fontSize=10, foregroundColor=Color(1, 1, 1)),  # White bold 
     )
     employee_header_format = CellFormat(
         backgroundColor=Color(1.0, 0.7, 0.7),  # light Red
