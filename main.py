@@ -116,7 +116,7 @@ def style_monthly_sheet(sheet):
     ))
 
     # "Сотрудник" cell styling
-    format_cell_range(sheet, "A3", CellFormat(
+    format_cell_range(sheet, "A4", CellFormat(
         backgroundColor=Color(1, 1, 1),
         textFormat=TextFormat(bold=True),
         horizontalAlignment='CENTER',
