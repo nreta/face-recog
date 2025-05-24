@@ -145,11 +145,7 @@ except gspread.exceptions.WorksheetNotFound:
         days_in_month_range = []  # Empty if month is not found
     
 
-    weekday_row = ['']  # First column is "Сотрудник"
-    for day in range(1, len(days_in_month_range) + 1):
-        date_obj = datetime(now.year, current_month, day)
-        weekday_row.append(weekdays_russian[date_obj.weekday() % 7])
-    sheet.append_row(weekday_row)
+    
 
     sheet.append_row(["Сотрудник"] + days_in_month_range)
 
@@ -166,7 +162,11 @@ except gspread.exceptions.WorksheetNotFound:
         sheet.append_row([f"{name} (Start)"] + [""] * 31)
         sheet.append_row([f"{name} (End)"] + [""] * 31)
 
-    
+    weekday_row = ['']  # First column is "Сотрудник"
+    for day in range(1, len(days_in_month_range) + 1):
+        date_obj = datetime(now.year, current_month, day)
+        weekday_row.append(weekdays_russian[date_obj.weekday() % 7])
+    sheet.append_row(weekday_row)
     print(f"✅ New sheet '{SHEET_NAME}' created with employees.")
 
 def check_and_create_sheet_daily():
