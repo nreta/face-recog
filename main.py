@@ -78,8 +78,23 @@ def style_monthly_sheet(sheet):
         horizontalAlignment='CENTER',
         verticalAlignment='MIDDLE'
     )
+    employee_header_format = CellFormat(
+        backgroundColor=Color(1.0, 0.7, 0.7),  # light Red
+        textFormat=TextFormat(bold=True, fontSize=10, foregroundColor=Color(1, 1, 1)),  # White bold text
+        horizontalAlignment='CENTER',
+        textFormat=TextFormat(fontSize=12),
+        verticalAlignment='MIDDLE'
+    )
     format_cell_range(sheet, "B3:AF3", day_header_format)
+    format_cell_range(sheet, "A3", employee_header_format)
 
+    employee_header_format_month_name = CellFormat(
+        textFormat=TextFormat(bold=True, fontSize=10, foregroundColor=Color(1, 1, 1)),  # White bold text
+        horizontalAlignment='CENTER',
+        textFormat=TextFormat(fontSize=12),
+        verticalAlignment='MIDDLE'
+    )
+    format_cell_range(sheet, "R1:V1", employee_header_format)
     # Employee name column - set width
     set_column_width(sheet, "A", 200)
     set_column_width(sheet, "B:AF", 40)
@@ -127,8 +142,8 @@ except gspread.exceptions.WorksheetNotFound:
     sheet = client.open_by_key(SHEET_ID).add_worksheet(title=SHEET_NAME, rows="100", cols="35")
 
     
-    sheet.update_acell("R1","Красина")
-    sheet.update_acell("A2",f"{current_month_name}")
+    sheet.update_acell("R1",f"{current_month_name} Красина")
+    
     
     currnet_days_in_month = get_month_key(current_month_name)
 
