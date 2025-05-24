@@ -91,7 +91,7 @@ def style_monthly_sheet(sheet):
         horizontalAlignment='CENTER',
         verticalAlignment='MIDDLE'
     )
-    format_cell_range(sheet, "A4:AF100", blue_format)
+    format_cell_range(sheet, "B4:AG100", blue_format)
 
     # Header merge for month name (centered above day headers)
     sheet.merge_cells('E1:M1')
