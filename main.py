@@ -85,7 +85,14 @@ def style_monthly_sheet(sheet):
     format_cell_range(sheet, "B3:AF3", day_header_format)
     format_cell_range(sheet, "A3", employee_header_format)
 
-   
+
+    header_format = CellFormat(
+        textFormat=TextFormat(bold=True, fontSize=14),  # White bold text
+        horizontalAlignment='CENTER',
+        verticalAlignment='MIDDLE'
+    )
+    format_cell_range(sheet, "R1", day_header_format)
+    
     # Employee name column - set width
     set_column_width(sheet, "A", 200)
     set_column_width(sheet, "B:AF", 40)
