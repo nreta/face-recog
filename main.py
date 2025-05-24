@@ -85,7 +85,7 @@ def style_monthly_sheet(sheet):
         verticalAlignment='MIDDLE'
     )
     format_cell_range(sheet, "B3:AF3", day_header_format)
-    format_cell_range(sheet, "A3", employee_header_format)
+    #format_cell_range(sheet, "A3", employee_header_format)
 
    
     # Employee name column - set width
