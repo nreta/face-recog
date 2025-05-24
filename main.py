@@ -135,11 +135,12 @@ except gspread.exceptions.WorksheetNotFound:
     style_monthly_sheet(sheet)
     sheet.update_acell("R1","Красина")
     sheet.update_acell("A2",f"{current_month_name}")
-    weekday_row = ['']  # First column is "Сотрудник"
-    for day in range(1, len(days_in_month_range) + 1):
-        date_obj = datetime(now.year, current_month, day)
-        weekday_row.append(weekdays_russian[date_obj.weekday() % 7])
-    sheet.append_row(weekday_row)
+    
+    # weekday_row = ['']  # First column is "Сотрудник"
+    # for day in range(1, len(days_in_month_range) + 1):
+    #     date_obj = datetime(now.year, current_month, day)
+    #     weekday_row.append(weekdays_russian[date_obj.weekday() % 7])
+    # sheet.append_row(weekday_row)
     
     currnet_days_in_month = get_month_key(current_month_name)
 
