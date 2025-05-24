@@ -133,7 +133,7 @@ except gspread.exceptions.WorksheetNotFound:
     sheet = client.open_by_key(SHEET_ID).add_worksheet(title=SHEET_NAME, rows="100", cols="35")
 
     style_monthly_sheet(sheet)
-    sheet.update_acell("R1",f"{current_month_name} Красина")
+    #sheet.update_acell("R1",f"{current_month_name} Красина")
     
     
     currnet_days_in_month = get_month_key(current_month_name)
