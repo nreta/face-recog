@@ -78,7 +78,7 @@ def style_monthly_sheet(sheet):
     )
     employee_header_format = CellFormat(
         backgroundColor=Color(1.0, 0.7, 0.7),  # light Red
-        textFormat=TextFormat(bold=True, fontSize=12, foregroundColor=Color(1, 1, 1)),  # White bold text
+        textFormat=TextFormat(bold=True, fontSize=12),  # White bold text
         horizontalAlignment='CENTER',
         verticalAlignment='MIDDLE'
     )
