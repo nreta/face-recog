@@ -80,18 +80,16 @@ def style_monthly_sheet(sheet):
     )
     employee_header_format = CellFormat(
         backgroundColor=Color(1.0, 0.7, 0.7),  # light Red
-        textFormat=TextFormat(bold=True, fontSize=10, foregroundColor=Color(1, 1, 1)),  # White bold text
+        textFormat=TextFormat(bold=True, fontSize=12, foregroundColor=Color(1, 1, 1)),  # White bold text
         horizontalAlignment='CENTER',
-        textFormat=TextFormat(fontSize=12),
         verticalAlignment='MIDDLE'
     )
     format_cell_range(sheet, "B3:AF3", day_header_format)
     format_cell_range(sheet, "A3", employee_header_format)
 
     employee_header_format_month_name = CellFormat(
-        textFormat=TextFormat(bold=True, fontSize=10, foregroundColor=Color(1, 1, 1)),  # White bold text
+        textFormat=TextFormat(bold=True, fontSize=12, foregroundColor=Color(1, 1, 1)),  # White bold text
         horizontalAlignment='CENTER',
-        textFormat=TextFormat(fontSize=12),
         verticalAlignment='MIDDLE'
     )
     format_cell_range(sheet, "R1:V1", employee_header_format)
