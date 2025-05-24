@@ -87,7 +87,7 @@ def style_monthly_sheet(sheet):
 
 
     header_format = CellFormat(
-        textFormat=TextFormat(bold=True, fontSize=14),  # White bold text
+        textFormat=TextFormat(bold=True, fontSize=14, foregroundColor=Color(0, 0, 0)),  # White bold text
         horizontalAlignment='CENTER',
         verticalAlignment='MIDDLE'
     )
