@@ -91,7 +91,7 @@ def style_monthly_sheet(sheet):
         horizontalAlignment='CENTER',
         verticalAlignment='MIDDLE'
     )
-    format_cell_range(sheet, "R1", day_header_format)
+    format_cell_range(sheet, "R1", header_format)
     
     # Employee name column - set width
     set_column_width(sheet, "A", 200)
