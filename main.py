@@ -135,6 +135,11 @@ except gspread.exceptions.WorksheetNotFound:
     style_monthly_sheet(sheet)
     sheet.update_acell("R1","Красина")
     sheet.update_acell("A2",f"{current_month_name}")
+    weekday_row = ['']  # First column is "Сотрудник"
+    for day in range(1, len(days_in_month_range) + 1):
+        date_obj = datetime(now.year, current_month, day)
+        weekday_row.append(weekdays_russian[date_obj.weekday() % 7])
+    sheet.append_row(weekday_row)
     
     currnet_days_in_month = get_month_key(current_month_name)
 
@@ -144,9 +149,6 @@ except gspread.exceptions.WorksheetNotFound:
         print(f"Error: Could not determine the number of days for {current_month_name}")
         days_in_month_range = []  # Empty if month is not found
     
-
-    
-
     sheet.append_row(["Сотрудник"] + days_in_month_range)
 
     # Fetch employee names from database
@@ -162,11 +164,7 @@ except gspread.exceptions.WorksheetNotFound:
         sheet.append_row([f"{name} (Start)"] + [""] * 31)
         sheet.append_row([f"{name} (End)"] + [""] * 31)
 
-    weekday_row = ['']  # First column is "Сотрудник"
-    for day in range(1, len(days_in_month_range) + 1):
-        date_obj = datetime(now.year, current_month, day)
-        weekday_row.append(weekdays_russian[date_obj.weekday() % 7])
-    sheet.append_row(weekday_row)
+  
     print(f"✅ New sheet '{SHEET_NAME}' created with employees.")
 
 def check_and_create_sheet_daily():
