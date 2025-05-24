@@ -116,12 +116,12 @@ def style_monthly_sheet(sheet):
     ))
 
     # "Сотрудник" cell styling
-    format_cell_range(sheet, "A4", CellFormat(
-        backgroundColor=Color(1, 1, 1),
-        textFormat=TextFormat(bold=True),
-        horizontalAlignment='CENTER',
-        verticalAlignment='MIDDLE'
-    ))
+    # format_cell_range(sheet, "A4", CellFormat(
+    #     backgroundColor=Color(1, 1, 1),
+    #     textFormat=TextFormat(bold=True),
+    #     horizontalAlignment='CENTER',
+    #     verticalAlignment='MIDDLE'
+    # ))
 
     # Borders around everything
     border_format = CellFormat(
@@ -140,8 +140,8 @@ except gspread.exceptions.WorksheetNotFound:
     sheet = client.open_by_key(SHEET_ID).add_worksheet(title=SHEET_NAME, rows="100", cols="35")
 
     style_monthly_sheet(sheet)
-    sheet.update_acell("R1","Красина")
-    sheet.update_acell("A2",f"{current_month_name}")
+    sheet.update_acell("R1",f"{current_month_name} Красина")
+    sheet.update_acell("A2",f"Месяц: {current_month_name}")
     
     # weekday_row = ['']  # First column is "Сотрудник"
     # for day in range(1, len(days_in_month_range) + 1):
