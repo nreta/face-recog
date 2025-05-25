@@ -90,7 +90,7 @@ def style_monthly_sheet(sheet):
     )
     format_cell_range(sheet, "B3:AF3", day_header_format)
     format_cell_range(sheet, "A3", employee_header_format)
-    format_cell_range(sheet, "A2", hide)
+    #format_cell_range(sheet, "A2", hide)
 
 
     header_format = CellFormat(
@@ -148,7 +148,7 @@ except gspread.exceptions.WorksheetNotFound:
 
     style_monthly_sheet(sheet)
     sheet.update_acell("R1",f"{current_month_name} Красина")
-    sheet.update_acell("A2",f"__")
+    #sheet.update_acell("A2",f"__")
     
     # weekday_row = ['']  # First column is "Сотрудник"
     # for day in range(1, len(days_in_month_range) + 1):
