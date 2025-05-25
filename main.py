@@ -72,29 +72,65 @@ def get_month_key(month_name):
 from gspread_formatting import *
 
 def style_monthly_sheet(sheet):
-    # 1. Format Header (Row 1)
-    header_format = CellFormat(
-        backgroundColor=Color(0.2, 0.6, 0.8),  # Blue
-        textFormat=TextFormat(bold=True, fontSize=12),
-        horizontalAlignment='CENTER'
+    day_header_format = CellFormat(
+        backgroundColor=Color(0.89, 0.22, 0.21),  # Red
+        textFormat=TextFormat(bold=True, fontSize=10, foregroundColor=Color(1, 1, 1)),  # White bold 
     )
-    format_cell_range(sheet, "A1:AF1", header_format)
+    employee_header_format = CellFormat(
+        backgroundColor=Color(1.0, 0.7, 0.7),  # light Red
+        textFormat=TextFormat(bold=True, fontSize=12),  # White bold text
+        horizontalAlignment='CENTER',
+        verticalAlignment='MIDDLE'
+    )
 
-    # 2. Set Column Widths
-    set_column_width(sheet, "A", 200)  # Wider for names
-    set_column_width(sheet, "B:AF", 80)  # Narrower for dates
+    hide = CellFormat(
 
-    # 3. Format Employee Rows (Alternate Colors)
-    for row in range(2, 100, 2):  # Every even row
-        format_cell_range(sheet, f"A{row}:AF{row}", CellFormat(
-            backgroundColor=Color(0.95, 0.95, 0.95)  # Light gray
-        ))
+        textFormat=TextFormat(bold=True, fontSize=12, foregroundColor=Color(0, 0, 0))  # White bold text
+       
+    )
+    format_cell_range(sheet, "B3:AF3", day_header_format)
+    format_cell_range(sheet, "A3", employee_header_format)
+    format_cell_range(sheet, "A2", hide)
 
-    # 4. Center-align all cells
-    center_format = CellFormat(horizontalAlignment='CENTER')
-    format_cell_range(sheet, "A2:AF100", center_format)
 
-    # 5. Add Borders
+    header_format = CellFormat(
+        textFormat=TextFormat(bold=True, fontSize=14, foregroundColor=Color(0, 0, 0)),  # White bold text
+        horizontalAlignment='CENTER',
+        verticalAlignment='MIDDLE'
+    )
+    format_cell_range(sheet, "R1", header_format)
+    
+    # Employee name column - set width
+    set_column_width(sheet, "A", 200)
+    set_column_width(sheet, "B:AF", 40)
+
+    # Blue background for employee rows (A4:AF100)
+    blue_format = CellFormat(
+        backgroundColor=Color(0.38, 0.58, 0.93),  # Blue
+        textFormat=TextFormat(fontSize=10),
+        horizontalAlignment='CENTER',
+        verticalAlignment='MIDDLE'
+    )
+    format_cell_range(sheet, "B4:AF100", blue_format)
+
+    # Header merge for month name (centered above day headers)
+    sheet.merge_cells('E1:M1')
+    format_cell_range(sheet, "E1", CellFormat(
+        backgroundColor=Color(1, 1, 1),
+        textFormat=TextFormat(bold=True, fontSize=12),
+        horizontalAlignment='CENTER',
+        verticalAlignment='MIDDLE'
+    ))
+
+    # "Сотрудник" cell styling
+    # format_cell_range(sheet, "A4", CellFormat(
+    #     backgroundColor=Color(1, 1, 1),
+    #     textFormat=TextFormat(bold=True),
+    #     horizontalAlignment='CENTER',
+    #     verticalAlignment='MIDDLE'
+    # ))
+
+    # Borders around everything
     border_format = CellFormat(
         borders=Borders(
             top=Border("SOLID"),
@@ -110,9 +146,15 @@ except gspread.exceptions.WorksheetNotFound:
     # Create a new sheet for the month
     sheet = client.open_by_key(SHEET_ID).add_worksheet(title=SHEET_NAME, rows="100", cols="35")
 
+    style_monthly_sheet(sheet)
+    sheet.update_acell("R1",f"{current_month_name} Красина")
+    sheet.update_acell("A2",f"")
     
-    sheet.update_acell("R1","Красина")
-    sheet.update_acell("A2",f"{current_month_name}")
+    # weekday_row = ['']  # First column is "Сотрудник"
+    # for day in range(1, len(days_in_month_range) + 1):
+    #     date_obj = datetime(now.year, current_month, day)
+    #     weekday_row.append(weekdays_russian[date_obj.weekday() % 7])
+    # sheet.append_row(weekday_row)
     
     currnet_days_in_month = get_month_key(current_month_name)
 
@@ -121,7 +163,6 @@ except gspread.exceptions.WorksheetNotFound:
     else:
         print(f"Error: Could not determine the number of days for {current_month_name}")
         days_in_month_range = []  # Empty if month is not found
-    
     
     sheet.append_row(["Сотрудник"] + days_in_month_range)
 
@@ -138,10 +179,8 @@ except gspread.exceptions.WorksheetNotFound:
         sheet.append_row([f"{name} (Start)"] + [""] * 31)
         sheet.append_row([f"{name} (End)"] + [""] * 31)
 
-    style_monthly_sheet(sheet)
+  
     print(f"✅ New sheet '{SHEET_NAME}' created with employees.")
-
-
 def check_and_create_sheet_daily():
     global sheet  # Use the global sheet variable
     last_checked_month = None  # Track the last checked month
