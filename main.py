@@ -74,16 +74,17 @@ def get_month_key(month_name):
 
 def style_monthly_sheet(sheet):
     # 1. Format Header (Row 1)
-    header_format = CellFormat(
-        backgroundColor=Color(0.2, 0.6, 0.8),  # Blue
-        textFormat=TextFormat(bold=True, fontSize=12),
-        horizontalAlignment='CENTER'
+
+    day_header_format = CellFormat(
+        backgroundColor=Color(0.89, 0.22, 0.21),  # Red
+        textFormat=TextFormat(bold=True, fontSize=10, foregroundColor=Color(1, 1, 1)),  # White bold 
     )
-    format_cell_range(sheet, "A1:AF1", header_format)
+    format_cell_range(sheet, "B3:AF3", day_header_format)
+
 
     # 2. Set Column Widths
     set_column_width(sheet, "A", 200)  # Wider for names
-    set_column_width(sheet, "B:AF", 80)  # Narrower for dates
+    set_column_width(sheet, "B:AF", 60)  # Narrower for dates
 
     # 3. Format Employee Rows (Alternate Colors)
     for row in range(2, 100, 2):  # Every even row
