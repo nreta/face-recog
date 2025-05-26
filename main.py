@@ -318,7 +318,7 @@ def process_attendance(shift_type):
                 continue
 
             best_match_index = np.argmin(face_distances)
-            if face_distances[best_match_index] < 0.40:
+            if face_distances[best_match_index] < 0.35:
                 name = local_names[best_match_index]
                 current_time = datetime.now(ZoneInfo("Europe/Moscow")).strftime("%H:%M")
 
@@ -386,9 +386,11 @@ def upload_employee():
                             cursor.execute('SELECT face_encoding FROM employee_faces')
                             for record in cursor.fetchall():
                                 stored_encoding = np.frombuffer(record[0], dtype=np.float64)
-                                if face_recognition.compare_faces([stored_encoding], face_encoding, tolerance=0.45)[0]:
-                                    error = "Сотрудник с таким лицом уже существует!"
+                                distance = face_recognition.face_distance([stored_encoding], face_encoding)[0]
+                                if distance < 0.35:  # Use a stricter threshold
+                                    error = f"Сотрудник с похожим лицом уже существует! (distance={distance:.3f})"
                                     break
+
 
                             if not error:
                                 cursor.execute('''
