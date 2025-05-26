@@ -14,7 +14,7 @@ from gspread_formatting import *
 from werkzeug.security import generate_password_hash, check_password_hash
 from zoneinfo import ZoneInfo 
 import bisect
-*
+
 
 app = Flask(__name__)
 app.secret_key = "admin"  # Change this to a secure key
