@@ -116,9 +116,9 @@ def style_monthly_sheet(sheet):
             backgroundColor=Color(0.95, 0.95, 0.95)  # Light gray
         ))
 
-    # 4. Center-align all cells
-    center_format = CellFormat(horizontalAlignment='CENTER')
-    format_cell_range(sheet, "A2:AF100", center_format)
+    # # 4. Center-align all cells
+    # center_format = CellFormat(horizontalAlignment='CENTER')
+    # format_cell_range(sheet, "A2:AF100", center_format)
 
     
 try:
