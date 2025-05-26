@@ -86,11 +86,11 @@ def style_monthly_sheet(sheet):
     )
     format_cell_range(sheet, "A3:AF100", border_format)
     
-    # day_header_format = CellFormat(
-    #     backgroundColor=Color(0.89, 0.22, 0.21),  # Red
-    #     textFormat=TextFormat(bold=True, fontSize=10, foregroundColor=Color(1, 1, 1)),  # White bold 
-    # )
-    # format_cell_range(sheet, "B3:AF3", day_header_format)
+    day_header_format = CellFormat(
+        backgroundColor=Color(0.89, 0.22, 0.21),  # Red
+        textFormat=TextFormat(bold=True, fontSize=10, foregroundColor=Color(1, 1, 1)),  # White bold 
+    )
+    format_cell_range(sheet, "B3:AF3", day_header_format)
 
     employee_header_format = CellFormat(
         backgroundColor=Color(1.0, 0.7, 0.7),  # light Red
@@ -98,7 +98,7 @@ def style_monthly_sheet(sheet):
         horizontalAlignment='CENTER',
         verticalAlignment='MIDDLE'
     )
-    format_cell_range(sheet, "A3", employee_header_format)
+    #format_cell_range(sheet, "A3", employee_header_format)
 
     header_format = CellFormat(
         textFormat=TextFormat(bold=True, fontSize=14, foregroundColor=Color(0, 0, 0)),  # White bold text
