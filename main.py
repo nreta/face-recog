@@ -98,7 +98,7 @@ def style_monthly_sheet(sheet):
 
     # 2. Set Column Widths
     set_column_width(sheet, "A", 200)  # Wider for names
-    set_column_width(sheet, "B:AF", 60)  # Narrower for dates
+    set_column_width(sheet, "B:AF", 50)  # Narrower for dates
 
     # 3. Format Employee Rows (Alternate Colors)
     for row in range(2, 100, 2):  # Every even row
