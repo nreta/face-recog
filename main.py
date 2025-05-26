@@ -17,7 +17,7 @@ import bisect
 
 
 app = Flask(__name__)
-app.secret_key = "admin"  # Change this to a secure key
+app.secret_key = "admin"  # passwork key
 
 
 
