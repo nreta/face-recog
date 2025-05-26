@@ -84,7 +84,7 @@ def style_monthly_sheet(sheet):
 
     # 2. Set Column Widths
     set_column_width(sheet, "A", 200)  # Wider for names
-    set_column_width(sheet, "B:AF", 80)  # Narrower for dates
+    set_column_width(sheet, "B:AF", 60)  # Narrower for dates
 
     # 3. Format Employee Rows (Alternate Colors)
     for row in range(2, 100, 2):  # Every even row
@@ -113,7 +113,7 @@ except gspread.exceptions.WorksheetNotFound:
     sheet = client.open_by_key(SHEET_ID).add_worksheet(title=SHEET_NAME, rows="100", cols="35")
 
     
-    sheet.update_acell("R1","Красина")
+    sheet.update_acell("R1",f"{current_month_name} Красина")
     sheet.update_acell("A2",f"{current_month_name}")
     
     currnet_days_in_month = get_month_key(current_month_name)
