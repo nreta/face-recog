@@ -92,13 +92,24 @@ def style_monthly_sheet(sheet):
     )
     format_cell_range(sheet, "B3:AF3", day_header_format)
 
+    blue_format = CellFormat(
+        backgroundColor=Color(0.38, 0.58, 0.93),  # Blue
+        textFormat=TextFormat(fontSize=10),
+        horizontalAlignment='CENTER',
+        verticalAlignment='MIDDLE'
+    )
+    format_cell_range(sheet, "B4:AF100", blue_format)
+
+
+
+    
     employee_header_format = CellFormat(
         backgroundColor=Color(1.0, 0.7, 0.7),  # light Red
         textFormat=TextFormat(bold=True, fontSize=12),  # White bold text
         horizontalAlignment='CENTER',
         verticalAlignment='MIDDLE'
     )
-    #format_cell_range(sheet, "A3", employee_header_format)
+    format_cell_range(sheet, "A3", employee_header_format)
 
     header_format = CellFormat(
         textFormat=TextFormat(bold=True, fontSize=14, foregroundColor=Color(0, 0, 0)),  # White bold text
@@ -111,11 +122,7 @@ def style_monthly_sheet(sheet):
     set_column_width(sheet, "A", 180)  # Wider for names
     set_column_width(sheet, "B:AF", 40)  # Narrower for dates
 
-    # 3. Format Employee Rows (Alternate Colors)
-    for row in range(2, 100, 2):  # Every even row
-        format_cell_range(sheet, f"A{row}:AF{row}", CellFormat(
-            backgroundColor=Color(0.95, 0.95, 0.95)  # Light gray
-        ))
+   
 
   
 
