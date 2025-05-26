@@ -148,7 +148,7 @@ except gspread.exceptions.WorksheetNotFound:
 
     style_monthly_sheet(sheet)
     sheet.update_acell("R1",f"{current_month_name} Красина")
-    sheet.update_acell("A2",f"")
+    sheet.update_acell("A2",f"_")
     
     # weekday_row = ['']  # First column is "Сотрудник"
     # for day in range(1, len(days_in_month_range) + 1):
