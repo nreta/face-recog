@@ -107,7 +107,7 @@ def style_monthly_sheet(sheet):
     format_cell_range(sheet, "R1", header_format)
 
     # 2. Set Column Widths
-    set_column_width(sheet, "A", 200)  # Wider for names
+    set_column_width(sheet, "A", 180)  # Wider for names
     set_column_width(sheet, "B:AF", 40)  # Narrower for dates
 
     # 3. Format Employee Rows (Alternate Colors)
