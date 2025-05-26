@@ -76,15 +76,15 @@ def style_monthly_sheet(sheet):
     # 1. Format Header (Row 1)
 
     # 5. Add Borders
-    border_format = CellFormat(
-        borders=Borders(
-            top=Border("SOLID"),
-            bottom=Border("SOLID"),
-            left=Border("SOLID"),
-            right=Border("SOLID")
-        )
-    )
-    format_cell_range(sheet, "A1:AF100", border_format)
+    # border_format = CellFormat(
+    #     borders=Borders(
+    #         top=Border("SOLID"),
+    #         bottom=Border("SOLID"),
+    #         left=Border("SOLID"),
+    #         right=Border("SOLID")
+    #     )
+    # )
+    # format_cell_range(sheet, "A1:AF100", border_format)
     day_header_format = CellFormat(
         backgroundColor=Color(0.89, 0.22, 0.21),  # Red
         textFormat=TextFormat(bold=True, fontSize=10, foregroundColor=Color(1, 1, 1)),  # White bold 
