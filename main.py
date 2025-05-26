@@ -125,8 +125,6 @@ try:
 except gspread.exceptions.WorksheetNotFound:
     # Create a new sheet for the month
     sheet = client.open_by_key(SHEET_ID).add_worksheet(title=SHEET_NAME, rows="100", cols="35")
-
-    
     sheet.update_acell("R1",f"{current_month_name} Красина")
     sheet.update_acell("A2",f"{current_month_name}")
     
@@ -137,7 +135,6 @@ except gspread.exceptions.WorksheetNotFound:
     else:
         print(f"Error: Could not determine the number of days for {current_month_name}")
         days_in_month_range = []  # Empty if month is not found
-    
     
     sheet.append_row(["Сотрудник"] + days_in_month_range)
 
@@ -321,7 +318,7 @@ def process_attendance(shift_type):
                 continue
 
             best_match_index = np.argmin(face_distances)
-            if face_distances[best_match_index] < 0.35:
+            if face_distances[best_match_index] < 0.40:
                 name = local_names[best_match_index]
                 current_time = datetime.now(ZoneInfo("Europe/Moscow")).strftime("%H:%M")
 
