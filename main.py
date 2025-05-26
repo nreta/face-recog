@@ -99,9 +99,6 @@ def style_monthly_sheet(sheet):
         verticalAlignment='MIDDLE'
     )
     format_cell_range(sheet, "B4:AF100", blue_format)
-
-
-
     
     employee_header_format = CellFormat(
         backgroundColor=Color(1.0, 0.7, 0.7),  # light Red
@@ -122,11 +119,7 @@ def style_monthly_sheet(sheet):
     set_column_width(sheet, "A", 180)  # Wider for names
     set_column_width(sheet, "B:AF", 40)  # Narrower for dates
 
-   
 
-  
-
-    
 try:
     sheet = client.open_by_key(SHEET_ID).worksheet(SHEET_NAME)
 except gspread.exceptions.WorksheetNotFound:
@@ -328,7 +321,7 @@ def process_attendance(shift_type):
                 continue
 
             best_match_index = np.argmin(face_distances)
-            if face_distances[best_match_index] < 0.40:
+            if face_distances[best_match_index] < 0.35:
                 name = local_names[best_match_index]
                 current_time = datetime.now(ZoneInfo("Europe/Moscow")).strftime("%H:%M")
 
