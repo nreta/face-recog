@@ -88,6 +88,8 @@ def style_monthly_sheet(sheet):
     
     day_header_format = CellFormat(
         backgroundColor=Color(0.89, 0.22, 0.21),  # Red
+        horizontalAlignment='CENTER',
+        verticalAlignment='MIDDLE'
         textFormat=TextFormat(bold=True, fontSize=10, foregroundColor=Color(1, 1, 1)),  # White bold 
     )
     format_cell_range(sheet, "B3:AF3", day_header_format)
@@ -141,7 +143,8 @@ except gspread.exceptions.WorksheetNotFound:
     else:
         print(f"Error: Could not determine the number of days for {current_month_name}")
         days_in_month_range = []  # Empty if month is not found
-    
+
+    #sheet.append_row([""]) 
     sheet.append_row(["Сотрудник"] + days_in_month_range)
 
     # Fetch employee names from database
