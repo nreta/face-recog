@@ -98,6 +98,12 @@ def style_monthly_sheet(sheet):
         horizontalAlignment='CENTER',
         verticalAlignment='MIDDLE'
     )
+    for row in range(2, 100, 4):  # Start at 2, increment by 4 for 2-on, 2-off
+    for r in range(row, row + 2):  # Apply to two rows at a time
+        format_cell_range(sheet, f"B{r}:AF{r}", CellFormat(
+            backgroundColor=Color(0.85, 0.92, 1.0)
+        ))
+
     format_cell_range(sheet, "B4:AF100", blue_format)
     
     employee_header_format = CellFormat(
