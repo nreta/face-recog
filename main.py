@@ -89,7 +89,7 @@ def style_monthly_sheet(sheet):
     day_header_format = CellFormat(
         backgroundColor=Color(0.89, 0.22, 0.21),  # Red
         horizontalAlignment='CENTER',
-        verticalAlignment='MIDDLE'
+        verticalAlignment='MIDDLE',
         textFormat=TextFormat(bold=True, fontSize=10, foregroundColor=Color(1, 1, 1)),  # White bold 
     )
     format_cell_range(sheet, "B3:AF3", day_header_format)
